@@ -1,0 +1,13 @@
+utp_max_cwnd_increase_bytes_per_rtt 3000
+utp_target_delay 100
+utp_max_window_decay 100
+utp_reorder_buffer_size 32
+utp_packet_size 300
+utp_serializations_per_target 2
+utp_min_window_size 10
+utp_use_packet_pacing 1
+utp_duplicate_acks_before_resend 3
+utp_delayed_ack_byte_threshold 2400
+utp_delayed_ack_time_threshold 5
+utp_ratecheck_interval 1000
+g_send_limit 50000000

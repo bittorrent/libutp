@@ -1,0 +1,13 @@
+To use: run 'utp_test', specify a port to listen on, a file
+to log to, a destination to connect to and a config file to use.
+
+Start a node on the destination machine.
+
+Logs are written to the specified files.
+
+Parse the logs by running parse_log.py <log-file>
+
+The script assumes that gnuplot is installed, and will also
+'open' the resulting graphs (wich will open them in the
+preferred application on a mac)
+
