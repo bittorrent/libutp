@@ -7,7 +7,7 @@ while maintaining minimum extra delay. It is implemented on top of UDP to be
 cross-platform and functional today. As a result, uTP is the primary transport
 for uTorrent peer-to-peer connections.
 
-uTP written in C++, but the external interface is strictly C (ANSI C89).
+uTP is written in C++, but the external interface is strictly C (ANSI C89).
 
 ## The Interface
 
@@ -27,6 +27,14 @@ See utp.h for more details and other API documentation.
 ## Examples
 
 See the utp_test and utp_file directories for examples.
+
+## Building
+
+We do't have a makefile yet to build static or shared libraries. Here's how you
+can build one of the examples, which will link in everything it needs from
+libutp:
+
+  cd utp_test && make
 
 ## License
 
