@@ -30,11 +30,12 @@ See the utp_test and utp_file directories for examples.
 
 ## Building
 
-We do't have a makefile yet to build static or shared libraries. Here's how you
+uTP has been known to build on Windows with MSVC and on linux and OS X with gcc.
+We don't have a makefile yet to build static or shared libraries. Here's how you
 can build one of the examples, which will link in everything it needs from
 libutp:
 
-  cd utp_test && make
+    cd utp_test && make
 
 ## License
 
