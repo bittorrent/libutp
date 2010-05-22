@@ -43,12 +43,15 @@ enum {
 // The uTP socket layer calls this when bytes have been received from the network.
 typedef void UTPOnReadProc(void *userdata, const byte *bytes, size_t count);
 
-// The uTP socket layer calls this to retrieve number of bytes currently in read buffer
-typedef size_t UTPGetRBSize(void *userdata);
-
 // The uTP socket layer calls this to fill the outgoing buffer with bytes.
 // The uTP layer takes responsibility that those bytes will be delivered.
 typedef void UTPOnWriteProc(void *userdata, byte *bytes, size_t count);
+
+// The uTP socket layer calls this to retrieve number of bytes currently in read buffer
+typedef size_t UTPGetRBSize(void *userdata);
+
+// The uTP socket layer calls this whenever the socket becomes writable.
+typedef void UTPOnStateChangeProc(void *userdata, int state);
 
 // The uTP socket layer calls this when an error occurs on the socket.
 // These errors currently include ECONNREFUSED, ECONNRESET and ETIMEDOUT, but
@@ -57,9 +60,6 @@ typedef void UTPOnErrorProc(void *userdata, int errcode);
 
 // The uTP socket layer calls this to report overhead statistics
 typedef void UTPOnOverheadProc(void *userdata, bool send, size_t count, int type);
-
-// The uTP socket layer calls this whenever the socket becomes writable.
-typedef void UTPOnStateChangeProc(void *userdata, int state);
 
 struct UTPFunctionTable {
 	UTPOnReadProc *on_read;
