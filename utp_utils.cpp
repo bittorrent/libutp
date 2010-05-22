@@ -57,6 +57,7 @@ uint64 UTP_GetMicroseconds()
 {
 	static bool time_init = false;
 	if (!time_init) {
+		time_init = true;
 		Time_Initialize();
 	}
 
