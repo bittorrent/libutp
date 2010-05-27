@@ -127,14 +127,11 @@ uint64 UTP_GetMicroseconds()
 
 #else
 
-#warning "Using non-monotonic function gettimeofday() in get_microseconds()"
+#warning "Using non-monotonic function gettimeofday() in UTP_GetMicroseconds()"
 // Fallback
 
 uint64 UTP_GetMicroseconds()
 {
-	// No point in making these global.  They are only used here.
-	static uint64 g_tick_epoch = 0;
-	static uint64 g_tick_tod = 0;
 	static time_t start_time = 0;
 
 	timeval t;

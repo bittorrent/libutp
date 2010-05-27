@@ -1648,17 +1648,13 @@ void UTPSocket::apply_ledbat_ccontrol(uint bytes_acked, uint32 actual_delay, int
 	// the delay can never be greater than the rtt. The min_rtt
 	// variable is the RTT in microseconds
 	
-	// Silent hack to handle obviously bad values; some SDK devices lack monotonic clock support
-	// so the former assertion of min_rtt >= 0 fails when the system time reset earlier.
-	// when this happens, set the min_rtt to 500 ms, so that it's very unlikely to clamp down
-	// the delay measurement
-	if (min_rtt < 0 || min_rtt > INT_MAX - 1000) min_rtt = 500000;
+	assert(min_rtt >= 0);
 	int32 our_delay = min<uint32>(our_hist.get_value(), uint32(min_rtt));
 	assert(our_delay != INT_MAX);
 	assert(our_delay >= 0);
 	assert(our_hist.get_value() >= 0);
 
-	// This test the connection under heavy load from foreground
+	// This tests the connection under heavy load from foreground
 	// traffic. Pretend that our delays are very high to force the
 	// connection to use sub-packet size window sizes
 	//our_delay *= 4;
