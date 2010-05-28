@@ -301,15 +301,10 @@ void utp_state(void* socket, int state)
 	socket_state* s = (socket_state*)socket;
 	s->state = state;
 	if (state == UTP_STATE_WRITABLE || state == UTP_STATE_CONNECT) {
-		size_t to_write;
-		do {
-			to_write =  g_send_limit - s->total_sent;
-			if (to_write == 0) {
-				UTP_Close(s->s);
-				s->s = NULL;
-				break;
-			}
-		} while (UTP_Write(s->s, to_write));
+		if (UTP_Write(s->s, g_send_limit - s->total_sent)) {
+			UTP_Close(s->s);
+			s->s = NULL;
+		}
 	} else if (state == UTP_STATE_DESTROYING) {
 		size_t index = g_sockets.LookupElement(*s);
 		if (index != (size_t)-1) g_sockets.MoveUpLast(index);

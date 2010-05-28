@@ -273,17 +273,12 @@ void utp_state(void* socket, int state)
 {
 	assert(utp_socket == socket);
 	if (state == UTP_STATE_CONNECT || state == UTP_STATE_WRITABLE) {
-		size_t to_write;
-		do {
-			to_write = file_size - ftell(file);
-			if (to_write == 0) {
-				printf("upload complete\n");
-				UTP_Close(utp_socket);
-				fclose(file);
-				file = NULL;
-				break;
-			}
-		} while (UTP_Write(utp_socket, to_write));
+		if (UTP_Write(utp_socket, file_size - ftell(file))) {
+			printf("upload complete\n");
+			UTP_Close(utp_socket);
+			fclose(file);
+			file = NULL;
+		}
 	} else if (state == UTP_STATE_DESTROYING) {
 		utp_socket = NULL;
 	}
