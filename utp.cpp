@@ -7,16 +7,20 @@
 #include <assert.h>
 #include <string.h>
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <limits.h> // for UINT_MAX
 
 #ifdef WIN32
 #include "win32_inet_ntop.h"
 
+// newer versions of MSVC define these in errno.h
+#ifndef ECONNRESET
 #define ECONNRESET WSAECONNRESET
 #define EMSGSIZE WSAEMSGSIZE
 #define ECONNREFUSED WSAECONNREFUSED
 #define ETIMEDOUT WSAETIMEDOUT
+#endif
 #endif
 
 #ifdef POSIX
@@ -191,13 +195,13 @@ struct PackedSockAddr {
 		const byte family = get_family();
 		str i;
 		if (family == AF_INET) {
-			inet_ntop(family, &_sin4, s, len);
+			inet_ntop(family, (uint32*)&_sin4, s, len);
 			i = s;
 			while (*++i) {}
 		} else {
 			i = s;
 			*i++ = '[';
-			inet_ntop(family, &_in._in6addr, i, len-1);
+			inet_ntop(family, (in6_addr*)&_in._in6addr, i, len-1);
 			while (*++i) {}
 			*i++ = ']';
 		}

@@ -3,14 +3,6 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-#ifdef WIN32
-#define ECONNRESET WSAECONNRESET
-#define EMSGSIZE WSAEMSGSIZE
-#define ECONNREFUSED WSAECONNREFUSED
-#define ECONNRESET WSAECONNRESET
-#define ETIMEDOUT WSAETIMEDOUT
-#endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -18,6 +10,17 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <errno.h>
+
+#ifdef WIN32
+// newer versions of MSVC define these in errno.h
+#ifndef ECONNRESET
+#define ECONNRESET WSAECONNRESET
+#define EMSGSIZE WSAEMSGSIZE
+#define ECONNREFUSED WSAECONNREFUSED
+#define ECONNRESET WSAECONNRESET
+#define ETIMEDOUT WSAETIMEDOUT
+#endif
+#endif
 
 // platform-specific includes
 #ifdef POSIX
@@ -165,7 +168,7 @@ SOCKET make_socket(const struct sockaddr *addr, socklen_t addrlen)
 	if (bind(s, addr, addrlen) < 0) {
 		char str[20];
 		printf("UDP port bind failed %s: (%d) %s\n",
-			   inet_ntop(addr->sa_family, addr, str, sizeof(str)), errno, strerror(errno));
+			   inet_ntop(addr->sa_family, (sockaddr*)addr, str, sizeof(str)), errno, strerror(errno));
 		closesocket(s);
 		return INVALID_SOCKET;
 	}
@@ -197,7 +200,6 @@ void UDPSocketManager::set_socket(SOCKET s)
 	if (_socket != INVALID_SOCKET) closesocket(_socket);
 	assert(s != INVALID_SOCKET);
 	_socket = s;
-
 }
 
 void send_to(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen)
@@ -499,4 +501,3 @@ int main(int argc, char* argv[])
 
 	fclose(log_file);
 }
-
