@@ -790,7 +790,7 @@ struct UTPSocket {
 
 	void send_packet(OutgoingPacket *pkt);
 
-	bool is_writable(size_t to_write = 0);
+	bool is_writable(size_t to_write);
 
 	bool flush_packets();
 
@@ -1054,7 +1054,6 @@ bool UTPSocket::is_writable(size_t to_write)
 
 	// if we don't have enough quota, we can't write regardless
 	if (USE_PACKET_PACING) {
-		if (to_write == 0) to_write = packet_size;
 		if (send_quota / 100 < to_write) return false;
 	}
 
@@ -1256,7 +1255,7 @@ void UTPSocket::check_timeouts()
 		// if we don't use packet pacing, the writable event is triggered
 		// whenever the cur_window falls below the max_window, so we don't
 		// need this check then
-		if (state == CS_CONNECTED_FULL && is_writable()) {
+		if (state == CS_CONNECTED_FULL && is_writable(packet_size)) {
 			state = CS_CONNECTED;
 			LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
 					 this, max_window, cur_window, send_quota / 100, packet_size);
@@ -1337,7 +1336,7 @@ void UTPSocket::check_timeouts()
 		}
 
 		// Mark the socket as writable
-		if (state == CS_CONNECTED_FULL && is_writable()) {
+		if (state == CS_CONNECTED_FULL && is_writable(packet_size)) {
 			state = CS_CONNECTED;
 			LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
 					 this, max_window, cur_window, send_quota / 100, packet_size);
@@ -2077,7 +2076,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 
 	// In case the ack dropped the current window below
 	// the max_window size, Mark the socket as writable
-	if (conn->state == CS_CONNECTED_FULL && conn->is_writable()) {
+	if (conn->state == CS_CONNECTED_FULL && conn->is_writable(conn->packet_size)) {
 		conn->state = CS_CONNECTED;
 		LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
 				 conn, conn->max_window, conn->cur_window, conn->send_quota / 100, conn->packet_size);
@@ -2689,7 +2688,6 @@ bool UTP_Write(UTPSocket *conn, size_t bytes)
 		// Send an outgoing packet.
 		// Also add it to the outgoing of packets that have been sent but not ACKed.
 
-		// Each packet includes up to PACKET_SIZE bytes of payload.
 		if (num_to_send == 0) {
 			LOG_UTPV("0x%08x: UTP_Write %d bytes = true", conn, param);
 			return true;
