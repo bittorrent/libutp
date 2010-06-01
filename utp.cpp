@@ -862,7 +862,7 @@ void UTPSocket::send_data(PacketFormat* b, size_t length, bandwidth_type_t type)
 	int flags = version == 0 ? b->flags : b1->type;
 	int seq_nr = version == 0 ? b->seq_nr : b1->seq_nr;
 	int ack_nr = version == 0 ? b->ack_nr : b1->ack_nr;
-	LOG_UTPV("0x%08x: send %s len:%u id:%u timestamp:"I64u" reply_micro:%u flags: %s seq_nr:%d, ack_nr:%d",
+	LOG_UTPV("0x%08x: send %s len:%u id:%u timestamp:"I64u" reply_micro:%u flags:%s seq_nr:%d, ack_nr:%d",
 			 this, addrfmt(addr, addrbuf), length, conn_id_send, time, reply_micro, flagnames[flags],
 			 seq_nr, ack_nr);
 #endif
@@ -941,7 +941,7 @@ void UTPSocket::send_ack(bool synack)
 			pfa1.acks[3] = (byte)(m >> 24);
 		}
 		len += 4 + 2;
-		LOG_UTPV("0x%08x: Sending EACK %d [%u] bits: [%032b]", this, ack_nr, conn_id_send, m);
+		LOG_UTPV("0x%08x: Sending EACK %d [%u] bits:[%032b]", this, ack_nr, conn_id_send, m);
 	} else if (synack) {
 		// we only send "extensions" in response to SYN
 		// and the reorder count is 0 in that state
@@ -1002,7 +1002,7 @@ void UTPSocket::send_rst(SendToProc *send_to_proc, void *send_to_userdata,
 		len = sizeof(PacketFormatV1);
 	}
 
-	LOG_UTPV("%s: Sending RST id:%u seq:%d ack:%d", addrfmt(addr, addrbuf), conn_id_send, (uint)seq_nr, (uint)ack_nr);
+	LOG_UTPV("%s: Sending RST id:%u seq_nr:%d ack_nr:%d", addrfmt(addr, addrbuf), conn_id_send, (uint)seq_nr, (uint)ack_nr);
 	LOG_UTPV("send %s len:%u id:%u", addrfmt(addr, addrbuf), len, conn_id_send);
 	send_to_addr(send_to_proc, send_to_userdata, (const byte*)&pf1, len, addr);
 }
@@ -1241,12 +1241,15 @@ void UTPSocket::check_timeouts()
 	// this invariant should always be true
 	assert(cur_window_packets == 0 || outbuf.get(seq_nr - cur_window_packets));
 
-	LOG_UTPV("0x%08x: CheckTimeouts timeout:%d max_window=%d cur_window=%d quota=%d state=%s cur_window_packets=%d",
+	LOG_UTPV("0x%08x: CheckTimeouts timeout:%d max_window:%d cur_window:%d quota:%d "
+			 "state:%s cur_window_packets:%d bytes_since_ack:%u ack_time:%d",
 			 this, int(rto_timeout - g_current_ms), max_window, cur_window,
-			 send_quota / 100, statenames[state], cur_window_packets);
+			 send_quota / 100, statenames[state], cur_window_packets,
+			 bytes_since_ack, (int)(g_current_ms - ack_time));
 
 	update_send_quota();
 	flush_packets();
+
 
 	if (USE_PACKET_PACING) {
 		// In case the new send quota made it possible to send another packet
@@ -1257,7 +1260,7 @@ void UTPSocket::check_timeouts()
 		// need this check then
 		if (state == CS_CONNECTED_FULL && is_writable(packet_size)) {
 			state = CS_CONNECTED;
-			LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
+			LOG_UTPV("0x%08x: Socket writable. max_window:%d cur_window:%d quota:%d packet_size:%d",
 					 this, max_window, cur_window, send_quota / 100, packet_size);
 			func.on_state(userdata, UTP_STATE_WRITABLE);
 		}
@@ -1319,7 +1322,7 @@ void UTPSocket::check_timeouts()
 			}
 
 			// used in parse_log.py
-			LOG_UTP("0x%08x: Packet timeout. Resend. Seq=%d. Timeout=%d max_window=%d",
+			LOG_UTP("0x%08x: Packet timeout. Resend. seq_nr:%d. timeout:%d max_window:%d",
 					this, seq_nr - cur_window_packets, retransmit_timeout, max_window);
 
 			fast_timeout = true;
@@ -1338,7 +1341,7 @@ void UTPSocket::check_timeouts()
 		// Mark the socket as writable
 		if (state == CS_CONNECTED_FULL && is_writable(packet_size)) {
 			state = CS_CONNECTED;
-			LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
+			LOG_UTPV("0x%08x: Socket writable. max_window:%d cur_window:%d quota:%d packet_size:%d",
 					 this, max_window, cur_window, send_quota / 100, packet_size);
 			func.on_state(userdata, UTP_STATE_WRITABLE);
 		}
@@ -1432,15 +1435,24 @@ int UTPSocket::ack_packet(uint seq)
 	OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(seq);
 
 	// the packet has already been acked (or not sent)
-	if (pkt == NULL) return 1;
+	if (pkt == NULL) {
+		LOG_UTPV("0x%08x: got ack for:%d (already acked, or never sent)", this, seq);
+		return 1;
+	}
 
 	// can't ack packets that haven't been sent yet!
-	if (pkt->transmissions == 0) return 2;
+	if (pkt->transmissions == 0) {
+		LOG_UTPV("0x%08x: got ack for:%d (never sent, pkt_size:%d need_resend:%d)",
+				 this, seq, pkt->payload, pkt->need_resend);
+		return 2;
+	}
+
+	LOG_UTPV("0x%08x: got ack for:%d (pkt_size:%d need_resend:%d)",
+			 this, seq, pkt->payload, pkt->need_resend);
 
 	outbuf.put(seq, NULL);
 
-	// if we haven't re-sent the packet yet
-	// update the RTT estimate
+	// if we never re-sent the packet, update the RTT estimate
 	if (pkt->transmissions == 1) {
 		// Estimate the round trip time.
 		const uint32 ertt = (UTP_GetMicroseconds() - pkt->time_sent) / 1000;
@@ -1460,8 +1472,8 @@ int UTPSocket::ack_packet(uint seq)
 			rtt_hist.add_sample(ertt);
 		}
 		rto = max<uint>(rtt + rtt_var * 4, 500);
-		LOG_UTPV("0x%08x: got ack for:%d rtt:%d avg:%u var:%u rto:%u (pkt_size: %d need_resend: %d)",
-				 this, seq, ertt, rtt, rtt_var, rto, pkt->payload, pkt->need_resend);
+		LOG_UTPV("0x%08x: rtt:%d avg:%u var:%u rto:%u",
+				 this, ertt, rtt, rtt_var, rto);
 	}
 	retransmit_timeout = rto;
 	rto_timeout = g_current_ms + rto;
@@ -1524,7 +1536,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 	int resends[32];
 	int nr = 0;
 
-	LOG_UTPV("0x%08x: Got EACK [%032b] base: %d", this, *(uint32*)mask, base);
+	LOG_UTPV("0x%08x: Got EACK [%032b] base:%d", this, *(uint32*)mask, base);
 	do {
 		// we're iterating over the bits from higher sequence numbers
 		// to lower (kind of in reverse order, wich might not be very
@@ -1571,7 +1583,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 		// or packets that have already been acked
 		OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(v);
 		if (!pkt || pkt->transmissions == 0) {
-			LOG_UTPV("0x%08x: skipping %d. pkt=%p transmissions=%d %s",
+			LOG_UTPV("0x%08x: skipping %d. pkt:%p transmissions:%d %s",
 					 this, v, pkt, pkt?pkt->transmissions:0, pkt?"(not sent yet?)":"(already acked?)");
 			continue;
 		}
@@ -1594,7 +1606,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 			resends[nr++] = v;
 			LOG_UTPV("0x%08x: no ack for %d", this, v);
 		} else {
-			LOG_UTPV("0x%08x: not resending %d count=%d dup_ack=%d fast_resend_seq_nr=%d",
+			LOG_UTPV("0x%08x: not resending %d count:%d dup_ack:%d fast_resend_seq_nr:%d",
 					 this, v, count, duplicate_ack, fast_resend_seq_nr);
 		}
 	} while (--bits >= -1);
@@ -1607,7 +1619,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 		// is base-1
 		resends[nr++] = base - 1;
 	} else {
-		LOG_UTPV("0x%08x: not resending %d count=%d dup_ack=%d fast_resend_seq_nr=%d",
+		LOG_UTPV("0x%08x: not resending %d count:%d dup_ack:%d fast_resend_seq_nr:%d",
 				 this, base - 1, count, duplicate_ack, fast_resend_seq_nr);
 	}
 
@@ -1763,7 +1775,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 
 	if (pk_flags >= ST_NUM_STATES) return 0;
 
-	LOG_UTPV("0x%08x: Got %s. Seq=%d, Ack=%d, State=%s version=%d timestamp:"I64u" reply_micro:%u",
+	LOG_UTPV("0x%08x: Got %s. seq_nr:%d, ack_nr:%d, state:%s version:%d timestamp:"I64u" reply_micro:%u",
 			 conn, flagnames[pk_flags], pk_seq_nr, pk_ack_nr, statenames[conn->state], conn->version,
 			 conn->version == 0?uint64(pf->tv_sec) * 1000000 + pf->tv_usec:uint64(pf1->tv_usec),
 			 conn->version == 0?uint32(pf->reply_micro):uint32(pf1->reply_micro));
@@ -1803,7 +1815,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 					return 0;
 				}
 				memcpy(conn->extensions, data, 8);
-				LOG_UTPV("0x%08x: got extension bits: %02x%02x%02x%02x%02x%02x%02x%02x", conn,
+				LOG_UTPV("0x%08x: got extension bits:%02x%02x%02x%02x%02x%02x%02x%02x", conn,
 					conn->extensions[0], conn->extensions[1], conn->extensions[2], conn->extensions[3],
 					conn->extensions[4], conn->extensions[5], conn->extensions[6], conn->extensions[7]);
 			}
@@ -1988,7 +2000,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		if (wrapping_compare_less(conn->fast_resend_seq_nr, (pk_ack_nr + 1) & ACK_NR_MASK))
 			conn->fast_resend_seq_nr = pk_ack_nr + 1;
 
-		LOG_UTPV("0x%08x: fast_resend_seq_nr=%d", conn, conn->fast_resend_seq_nr);
+		LOG_UTPV("0x%08x: fast_resend_seq_nr:%d", conn, conn->fast_resend_seq_nr);
 
 		for (int i = 0; i < acks; ++i) {
 			int ack_status = conn->ack_packet(conn->seq_nr - conn->cur_window_packets);
@@ -2070,7 +2082,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 	// this invariant should always be true
 	assert(conn->cur_window_packets == 0 || conn->outbuf.get(conn->seq_nr - conn->cur_window_packets));
 
-	LOG_UTPV("0x%08x: acks = %d, acked_bytes = %d, seq_nr = %d, cur_window = %d, cur_window_packets = %d quota = %d",
+	LOG_UTPV("0x%08x: acks:%d, acked_bytes:%d, seq_nr:%d, cur_window:%d, cur_window_packets:%d quota:%d",
 			 conn, acks, acked_bytes, conn->seq_nr, conn->cur_window, conn->cur_window_packets,
 			 conn->send_quota / 100);
 
@@ -2078,7 +2090,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 	// the max_window size, Mark the socket as writable
 	if (conn->state == CS_CONNECTED_FULL && conn->is_writable(conn->packet_size)) {
 		conn->state = CS_CONNECTED;
-		LOG_UTPV("0x%08x: Socket writable. max_window=%d cur_window=%d quota=%d packet_size=%d",
+		LOG_UTPV("0x%08x: Socket writable. max_window:%d cur_window:%d quota:%d packet_size:%d",
 				 conn, conn->max_window, conn->cur_window, conn->send_quota / 100, conn->packet_size);
 		conn->func.on_state(conn->userdata, UTP_STATE_WRITABLE);
 	}
@@ -2182,7 +2194,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		// something is wrong.
 		if (conn->got_fin && pk_seq_nr > conn->eof_pkt) {
 			LOG_UTPV("0x%08x: Got an invalid packet sequence number, past EOF "
-				"reorder_count: %d len: %d (rb: %d)",
+				"reorder_count:%d len:%d (rb:%d)",
 				conn, conn->reorder_count, packet_end - data, conn->func.get_rb_size(conn->userdata));
 			return 0;
 		}
@@ -2192,7 +2204,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		// the inbuf entirely based on untrusted input
 		if (seqnr > 0x3ff) {
 			LOG_UTPV("0x%08x: Got an invalid packet sequence number, too far off "
-				"reorder_count: %d len: %d (rb: %d)",
+				"reorder_count:%d len:%d (rb:%d)",
 				conn, conn->reorder_count, packet_end - data, conn->func.get_rb_size(conn->userdata));
 			return 0;
 		}
@@ -2204,7 +2216,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		conn->inbuf.ensure_size(pk_seq_nr + 1, seqnr + 1);
 
 		// Has this packet already been received? (i.e. a duplicate)
-		// If that is the case, just close it.
+		// If that is the case, just discard it.
 		if (conn->inbuf.get(pk_seq_nr) != NULL) {
 #ifdef _DEBUG
 			++conn->_stats._nduprecv;
@@ -2229,7 +2241,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		conn->inbuf.put(pk_seq_nr, mem);
 		conn->reorder_count++;
 
-		LOG_UTPV("0x%08x: Got out of order data reorder_count: %d len: %d (rb: %d)",
+		LOG_UTPV("0x%08x: Got out of order data reorder_count:%d len:%d (rb:%d)",
 			conn, conn->reorder_count, packet_end - data, conn->func.get_rb_size(conn->userdata));
 
 		// Setup so the partial ACK message will get sent immediately.
@@ -2238,6 +2250,8 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 
 	// If ack_time or ack_bytes indicate that we need to send and ack, send one
 	// here instead of waiting for the timer to trigger
+	LOG_UTPV("bytes_since_ack:%u ack_time:%d",
+			 conn->bytes_since_ack, (int)(g_current_ms - conn->ack_time));
 	if (conn->state == CS_CONNECTED || conn->state == CS_CONNECTED_FULL) {
 		if (conn->bytes_since_ack > DELAYED_ACK_BYTE_THRESHOLD ||
 			(int)(g_current_ms - conn->ack_time) >= 0) {
@@ -2521,9 +2535,9 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 	const PacketFormatV1 *pf1 = (PacketFormatV1*)p;
 
 	if (version == 0) {
-		LOG_UTPV("recv id:%u seq:%d ack:%d", id, (uint)pf->seq_nr, (uint)pf->ack_nr);
+		LOG_UTPV("recv id:%u seq_nr:%d ack_nr:%d", id, (uint)pf->seq_nr, (uint)pf->ack_nr);
 	} else {
-		LOG_UTPV("recv id:%u seq:%d ack:%d", id, (uint)pf1->seq_nr, (uint)pf1->ack_nr);
+		LOG_UTPV("recv id:%u seq_nr:%d ack_nr:%d", id, (uint)pf1->seq_nr, (uint)pf1->ack_nr);
 	}
 
 	const byte flags = version == 0 ? pf->flags : pf1->type;
@@ -2594,7 +2608,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 	}
 
 	if (incoming_proc) {
-		LOG_UTPV("Incoming connection from %s uTP version: %d", addrfmt(addr, addrbuf), version);
+		LOG_UTPV("Incoming connection from %s uTP version:%d", addrfmt(addr, addrbuf), version);
 
 		// Create a new UTP socket to handle this new connection
 		UTPSocket *conn = UTP_Create(send_to_proc, send_to_userdata, to, tolen);
@@ -2658,7 +2672,7 @@ bool UTP_HandleICMP(const byte* buffer, size_t len, const struct sockaddr *to, s
 					const int err = conn->state == CS_SYN_SENT ?
 						ECONNREFUSED :
 						ECONNRESET;
-					LOG_UTPV("0x%08x: icmp packet causing error on socket: %d", conn, err);
+					LOG_UTPV("0x%08x: icmp packet causing error on socket:%d", conn, err);
 					conn->func.on_error(conn->userdata, err);
 				} else {
 					LOG_UTPV("0x%08x: icmp packet causing socket destruction", conn);
@@ -2702,7 +2716,7 @@ bool UTP_Write(UTPSocket *conn, size_t bytes)
 		}
 		bytes -= num_to_send;
 
-		LOG_UTPV("0x%08x: Sending packet. Seq=%d, Ack=%d, Wnd=%d/%d/%d, RcvWnd=%d, Size=%d, quota=%d, cur_window_packets=%d",
+		LOG_UTPV("0x%08x: Sending packet. seq_nr:%d ack_nr:%d wnd:%d/%d/%d rcv_win:%d size:%d quota:%d, cur_window_packets:%d",
 				 conn, conn->seq_nr, conn->ack_nr, conn->cur_window + num_to_send,
 				 (int)conn->max_window, (int)conn->max_window_user,
 				 conn->last_rcv_win, num_to_send, conn->send_quota / 100,
@@ -2797,7 +2811,7 @@ void UTP_Close(UTPSocket *conn)
 
 	assert(conn->state != CS_DESTROY_DELAY && conn->state != CS_FIN_SENT && conn->state != CS_DESTROY);
 
-	LOG_UTPV("0x%08x: UTP_Close", conn);
+	LOG_UTPV("0x%08x: UTP_Close in state:%s", conn, statenames[conn->state]);
 
 	switch(conn->state) {
 	case CS_CONNECTED:
