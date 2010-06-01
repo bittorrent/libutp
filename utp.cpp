@@ -2604,16 +2604,20 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		conn->state = CS_CONNECTED;
 
 		const uint read = UTP_ProcessIncoming(conn, buffer, len, true);
+
+		LOG_UTPV("0x%08x: recv send connect ACK", conn);
+		conn->send_ack(true);
+
 		incoming_proc(conn);
 
+		// we report overhead after incoming_proc, because the callbacks are setup now
 		if (conn->userdata) {
+			// SYN
 			conn->func.on_overhead(conn->userdata, false, (len - read) + conn->get_udp_overhead(),
 								   header_overhead);
-		}
-
-		if (conn->state != CS_FIN_SENT) {
-			LOG_UTPV("0x%08x: recv send connect ACK", conn);
-			conn->send_ack(true);
+			// SYNACK
+			conn->func.on_overhead(conn->userdata, true, conn->get_overhead(),
+								   ack_overhead);
 		}
 	}
 
@@ -2794,11 +2798,6 @@ void UTP_Close(UTPSocket *conn)
 	case CS_CONNECTED_FULL:
 		conn->state = CS_FIN_SENT;
 		conn->write_outgoing_packet(0, ST_FIN);
-		if (conn->userdata) {
-			// account for the FIN+ACK early since we're ditching the callback
-			conn->func.on_overhead(conn->userdata, false, conn->get_overhead(),
-								   close_overhead);
-		}
 		break;
 
 	case CS_SYN_SENT:
