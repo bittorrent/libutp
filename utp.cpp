@@ -313,11 +313,6 @@ static const cstr statenames[] = {
 	"IDLE","SYN_SENT","CONNECTED","CONNECTED_FULL","GOT_FIN","DESTROY_DELAY","FIN_SENT","RESET","DESTROY"
 };
 
-enum {
-	F_GOT_FIN = 16,		// Is a FIN packet in the reassembly buffer ?
-	F_TIMEOUT = 32,		// Timeout procedure
-};
-
 struct OutgoingPacket {
 	uint length;
 	uint payload;
@@ -579,7 +574,12 @@ struct UTPSocket {
 	size_t opt_sndbuf;
 	// SO_RCVBUF setting, in bytes
 	size_t opt_rcvbuf;
-	byte flag;
+
+	// Is a FIN packet in the reassembly buffer?
+	bool got_fin:1;
+	// Timeout procedure
+	bool fast_timeout:1;
+
 	// max receive window for other end, in bytes
 	size_t max_window_user;
 	// 0 = original uTP header, 1 = second revision
@@ -1322,7 +1322,7 @@ void UTPSocket::check_timeouts()
 			LOG_UTP("0x%08x: Packet timeout. Resend. Seq=%d. Timeout=%d max_window=%d",
 					this, seq_nr - cur_window_packets, retransmit_timeout, max_window);
 
-			flag |= F_TIMEOUT;
+			fast_timeout = true;
 			timeout_seq_nr = seq_nr;
 
 			if (cur_window_packets > 0) {
@@ -2043,11 +2043,11 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		}
 
 		// Fast timeout-retry
-		if (conn->flag & F_TIMEOUT) {
+		if (conn->fast_timeout) {
 			LOG_UTPV("Fast timeout %d,%d,%d?", conn->cur_window, conn->seq_nr - conn->timeout_seq_nr, conn->timeout_seq_nr);
 			if (((conn->fast_resend_seq_nr - conn->timeout_seq_nr) & ACK_NR_MASK) >= 0 ||
 				((conn->seq_nr - conn->cur_window_packets) & ACK_NR_MASK) != conn->fast_resend_seq_nr) {
-				conn->flag &= ~F_TIMEOUT;
+				conn->fast_timeout = false;
 			} else {
 				OutgoingPacket *pkt = (OutgoingPacket*)conn->outbuf.get(conn->seq_nr - conn->cur_window_packets);
 				if (pkt && pkt->transmissions > 0) {
@@ -2089,13 +2089,16 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 	}
 
 	// The connection is not in a state that can accept data?
-	if (conn->state != CS_CONNECTED && conn->state != CS_CONNECTED_FULL) {
+	if (conn->state != CS_CONNECTED &&
+		conn->state != CS_CONNECTED_FULL &&
+		conn->state != CS_FIN_SENT) {
 		return 0;
 	}
 
 	// Is this a finalize packet?
-	if (pk_flags == ST_FIN) {
-		conn->flag |= F_GOT_FIN;
+	if (pk_flags == ST_FIN & !conn->got_fin) {
+		LOG_UTPV("Got FIN eof_pkt:%u", pk_seq_nr);
+		conn->got_fin = true;
 		conn->eof_pkt = pk_seq_nr;
 		// at this point, it is possible for the
 		// other end to have sent packets with
@@ -2109,24 +2112,27 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 
 	// Getting an in-order packet?
 	if (seqnr == 0) {
-		// Post bytes to the upper layer
-		conn->func.on_read(conn->userdata, data, packet_end - data);
+		size_t count = packet_end - data;
+		if (count > 0 && conn->state != CS_FIN_SENT) {
+			LOG_UTPV("0x%08x: Got Data len:%d (rb:%d)", conn, count, conn->func.get_rb_size(conn->userdata));
+			// Post bytes to the upper layer
+			conn->func.on_read(conn->userdata, data, count);
+		}
 		conn->ack_nr++;
-		conn->bytes_since_ack += packet_end - data;
-
-		LOG_UTPV("0x%08x: Got Data len: %d (rb: %d)", conn, packet_end - data, conn->func.get_rb_size(conn->userdata));
+		conn->bytes_since_ack += count;
 
 		// Check if the next packet has been received too, but waiting
 		// in the reorder buffer.
 		for (;;) {
 
-			// Check if to post the EOF message to the upper layer.
-			if ((conn->flag & F_GOT_FIN) && (conn->eof_pkt == conn->ack_nr)) {
-				conn->state = CS_GOT_FIN;
-				conn->rto_timeout = g_current_ms + min<uint>(conn->rto * 3, 60);
+			if (conn->got_fin && conn->eof_pkt == conn->ack_nr) {
+				if (conn->state != CS_FIN_SENT) {
+					conn->state = CS_GOT_FIN;
+					conn->rto_timeout = g_current_ms + min<uint>(conn->rto * 3, 60);
 
-				LOG_UTPV("0x%08x: Posting EOF", conn);
-				conn->func.on_state(conn->userdata, UTP_STATE_EOF);
+					LOG_UTPV("0x%08x: Posting EOF", conn);
+					conn->func.on_state(conn->userdata, UTP_STATE_EOF);
+				}
 
 				// if the other end wants to close, ack immediately
 				conn->send_ack();
@@ -2138,7 +2144,6 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 				// since we have received all packets up to eof_pkt
 				// just ignore the ones after it.
 				conn->reorder_count = 0;
-				break;
 			}
 
 			// Quick get-out in case there is nothing to reorder
@@ -2151,10 +2156,13 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 			if (p == NULL)
 				break;
 			conn->inbuf.put(conn->ack_nr+1, NULL);
-			// Pass the bytes to the upper layer
-			conn->func.on_read(conn->userdata, p + sizeof(uint), *(uint*)p);
+			count = *(uint*)p;
+			if (count > 0 && conn->state != CS_FIN_SENT) {
+				// Pass the bytes to the upper layer
+				conn->func.on_read(conn->userdata, p + sizeof(uint), count);
+			}
 			conn->ack_nr++;
-			conn->bytes_since_ack += *(uint*)p;
+			conn->bytes_since_ack += count;
 
 			// Free the element from the reorder buffer
 			free(p);
@@ -2172,7 +2180,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		// if we have received a FIN packet, and the EOF-sequence number
 		// is lower than the sequence number of the packet we just received
 		// something is wrong.
-		if ((conn->flag & F_GOT_FIN) && pk_seq_nr > conn->eof_pkt) {
+		if (conn->got_fin && pk_seq_nr > conn->eof_pkt) {
 			LOG_UTPV("0x%08x: Got an invalid packet sequence number, past EOF "
 				"reorder_count: %d len: %d (rb: %d)",
 				conn, conn->reorder_count, packet_end - data, conn->func.get_rb_size(conn->userdata));
