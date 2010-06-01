@@ -23,4 +23,15 @@ enum bandwidth_type_t {
 
 #define g_log_utp 0
 #define g_log_utp_verbose 0
-void utp_log(char const* fmt, ...) {};
+void utp_log(char const* fmt, ...)
+{
+	/*
+	printf("[%u] ", UTP_GetMilliseconds());
+	va_list vl;
+	va_start(vl, fmt);
+	vprintf(fmt, vl);
+	va_end(vl);
+	puts("");
+	fflush(stdout);
+	*/
+};
