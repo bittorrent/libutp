@@ -1025,7 +1025,9 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 	pkt->transmissions++;
 	sent_ack();
 	send_data((PacketFormat*)pkt->data, pkt->length,
-			  pkt->transmissions == 1 ? payload_bandwidth : retransmit_overhead);
+		(state == CS_SYN_SENT) ? connect_overhead
+		: (pkt->transmissions == 1) ? payload_bandwidth
+		: retransmit_overhead);
 }
 
 bool UTPSocket::is_writable(size_t to_write)
@@ -1283,8 +1285,10 @@ void UTPSocket::check_timeouts()
 
 			// Increase RTO
 			const uint new_timeout = retransmit_timeout * 2;
-			if (new_timeout >= 30000) {
+			if (new_timeout >= 30000 || (state == CS_SYN_SENT && new_timeout > 6000)) {
 				// more than 30 seconds with no reply. kill it.
+				// if we haven't even connected yet, give up sooner. 6 seconds
+				// means 2 tries at the following timeouts: 3, 6 seconds
 				if (state == CS_FIN_SENT)
 					state = CS_DESTROY;
 				else
@@ -2437,7 +2441,7 @@ void UTP_Connect(UTPSocket *conn)
 			CUR_DELAY_SIZE, DELAY_BASE_HISTORY);
 
 	// Setup initial timeout timer.
-	conn->retransmit_timeout = 1500;
+	conn->retransmit_timeout = 3000;
 	conn->rto_timeout = g_current_ms + conn->retransmit_timeout;
 	conn->last_rcv_win = conn->get_rcv_window();
 
