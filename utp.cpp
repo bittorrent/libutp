@@ -670,6 +670,10 @@ struct UTPSocket {
 	uint64 bytes_sent;
 	uint32 bytes_sent_timestamp;
 
+	// used when determining the packet size
+	uint64 delay_sum_ms;
+	int num_delay_samples;
+
 	// the max number of bytes in a packet that is sent
 	size_t packet_size;
 
@@ -1356,6 +1360,11 @@ void UTPSocket::check_timeouts()
 			const int rate = (sent_total - bytes_sent) * 1000 / ms_since_rate_check;
 			assert(rate >= 0);
 
+			// average delay during these last 10 seconds
+			const int average_delay = num_delay_samples ? delay_sum_ms / num_delay_samples : -1;
+			num_delay_samples = 0;
+			delay_sum_ms = 0;
+
 			// target is microseconds
 			int target = CCONTROL_TARGET;
 			if (target <= 0) target = 100000;
@@ -1367,15 +1376,34 @@ void UTPSocket::check_timeouts()
 			// use the rate to figure out if we should change the packet size
 			// one window should have at least 3 packets, so don't double
 			// the packet size if the current window can't fit 6 packets
-			if (rate > SERIALIZATIONS_PER_TARGET * packet_size * 1000 / target &&
-				packet_size < max_payload && max_window / packet_size > 5) {
+
+			bool should_increase_packet_size
+				= rate > SERIALIZATIONS_PER_TARGET * packet_size * 1000 / target
+//				&& max_window / packet_size > 5
+				;
+
+			// if the average delay has been very low
+			// we can afford to increase the packet size
+			should_increase_packet_size = should_increase_packet_size
+				|| (average_delay != -1 && average_delay < target / 3);
+
+			// if we're already at max, we can't increase the packet size
+			should_increase_packet_size = should_increase_packet_size && (packet_size < max_payload);
+
+
+			bool should_decrease_packet_size
+				= rate < SERIALIZATIONS_PER_TARGET * packet_size * 1000 / 4 / target
+//				|| max_window / packet_size < 3
+				;
+
+			// don't decrease if we're already at minimum
+			should_decrease_packet_size = should_decrease_packet_size && packet_size > MIN_PACKET_SIZE;
+			if (should_increase_packet_size) {
 				packet_size *= 2;
 				if (packet_size > max_payload) {
 					packet_size = max_payload;
 				}
-			} else if ((rate < SERIALIZATIONS_PER_TARGET * packet_size * 1000 / 4 / target ||
-					   max_window / packet_size < 3) &&
-					   packet_size > MIN_PACKET_SIZE) {
+			} else if (should_decrease_packet_size) {
 				if (packet_size == max_payload) {
 					packet_size = PACKET_SIZE * 4;
 					assert(packet_size < max_payload);
@@ -1672,7 +1700,10 @@ void UTPSocket::apply_ledbat_ccontrol(uint bytes_acked, uint32 actual_delay, int
 	assert(our_delay >= 0);
 	assert(our_hist.get_value() >= 0);
 
-	// This tests the connection under heavy load from foreground
+	delay_sum_ms += our_delay / 1000;
+	++num_delay_samples;
+
+	// This test the connection under heavy load from foreground
 	// traffic. Pretend that our delays are very high to force the
 	// connection to use sub-packet size window sizes
 	//our_delay *= 4;
@@ -2345,6 +2376,8 @@ UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata, const st
 
 	conn->bytes_sent = conn->get_global_utp_bytes_sent();
 	conn->bytes_sent_timestamp = g_current_ms;
+	conn->delay_sum_ms = 0;
+	conn->num_delay_samples = 0;
 
 	// default to version 1
 	UTP_SetSockopt(conn, SO_UTPVERSION, 1);
