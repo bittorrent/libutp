@@ -993,7 +993,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 	}
 	pkt->time_sent = UTP_GetMicroseconds();
 	pkt->transmissions++;
-	conn->SentACK();
+	sent_ack();
 	send_data((PacketFormat*)pkt->data, pkt->length,
 			  pkt->transmissions == 1 ? payload_bandwidth : retransmit_overhead);
 }
