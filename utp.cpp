@@ -1537,7 +1537,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 		}
 
 		// Count the number of segments that were successfully received past it.
-		if (bits_set) {
+		if (bit_set) {
 			// the selective ack should never ACK the packet we're waiting for to decrement cur_window_packets
 			assert((v & outbuf.mask) != ((seq_nr - cur_window_packets) & outbuf.mask));
 			ack_packet(v);
