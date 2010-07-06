@@ -120,6 +120,8 @@ void UTP_GetPeerName(UTPSocket *socket, struct sockaddr *addr, socklen_t *addrle
 
 void UTP_GetDelays(UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
 
+uint UTP_GetPacketSize(UTPSocket *socket);
+
 #ifdef _DEBUG
 struct UTPStats {
 	uint64 _nbytes_recv;	// total bytes received
