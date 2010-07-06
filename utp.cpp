@@ -60,8 +60,8 @@ typedef sockaddr_storage SOCKADDR_STORAGE;
 // that hasn't been acked yet
 #define DUPLICATE_ACKS_BEFORE_RESEND 3
 
-#define DELAYED_ACK_BYTE_THRESHOLD 2400
-#define DELAYED_ACK_TIME_THRESHOLD 5
+#define DELAYED_ACK_BYTE_THRESHOLD 2400 // bytes
+#define DELAYED_ACK_TIME_THRESHOLD 100 // milliseconds
 
 #define RST_INFO_TIMEOUT 10000
 #define RST_INFO_LIMIT 1000
@@ -993,6 +993,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 	}
 	pkt->time_sent = UTP_GetMicroseconds();
 	pkt->transmissions++;
+	conn->SentACK();
 	send_data((PacketFormat*)pkt->data, pkt->length,
 			  pkt->transmissions == 1 ? payload_bandwidth : retransmit_overhead);
 }
@@ -1789,7 +1790,8 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 	// Getting an invalid sequence number?
 	if (seqnr >= REORDER_BUFFER_MAX_SIZE) {
 		if (seqnr >= (SEQ_NR_MASK + 1) - REORDER_BUFFER_MAX_SIZE && pk_flags != ST_STATE) {
-			conn->ack_time = g_current_ms + min<int>(conn->ack_time - g_current_ms, 50);
+			conn->ack_time = min<uint>(conn->ack_time, g_current_ms
+				+ DELAYED_ACK_TIME_THRESHOLD);
 		}
 		LOG_UTPV("    Got old Packet/Ack (%d/%d)=%d!", pk_seq_nr, conn->ack_nr, seqnr);
 		return 0;
@@ -2125,8 +2127,8 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 		}
 
 		// start the delayed ACK timer
-		conn->ack_time = g_current_ms + min<int>(conn->ack_time
-			- g_current_ms, DELAYED_ACK_TIME_THRESHOLD);
+		conn->ack_time = min<uint>(conn->ack_time, g_current_ms
+			+ DELAYED_ACK_TIME_THRESHOLD);
 	} else {
 		// Getting an out of order packet.
 		// The packet needs to be remembered and rearranged later.
@@ -2187,7 +2189,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 			conn, conn->reorder_count, packet_end - data, conn->func.get_rb_size(conn->userdata));
 
 		// Setup so the partial ACK message will get sent immediately.
-		conn->ack_time = g_current_ms + min<int>(conn->ack_time - g_current_ms, 1);
+		conn->ack_time = min<uint>(conn->ack_time, g_current_ms + 1);
 	}
 
 	// If ack_time or ack_bytes indicate that we need to send and ack, send one
@@ -2683,7 +2685,8 @@ void UTP_RBDrained(UTPSocket *conn)
 		if (conn->last_rcv_win == 0) {
 			conn->send_ack();
 		} else {
-			conn->ack_time = min<int>(conn->ack_time, UTP_GetMilliseconds() + 50);
+			conn->ack_time = min<uint>(conn->ack_time, UTP_GetMilliseconds()
+				+ DELAYED_ACK_TIME_THRESHOLD);
 		}
 	}
 }
