@@ -1389,7 +1389,7 @@ void UTPSocket::check_timeouts()
 			bytes_sent_timestamp = g_current_ms;
 		}
 
-		if (state == CS_CONNECTED || state == CS_CONNECTED_FULL) {
+		if (state >= CS_CONNECTED && state <= CS_FIN_SENT) {
 			// Send acknowledgment packets periodically, or when the threshold is reached
 			if (bytes_since_ack > DELAYED_ACK_BYTE_THRESHOLD ||
 				(int)(g_current_ms - ack_time) >= 0) {
@@ -1409,6 +1409,9 @@ void UTPSocket::check_timeouts()
 	case CS_DESTROY_DELAY:
 		if ((int)(g_current_ms - rto_timeout) >= 0) {
 			state = (state == CS_DESTROY_DELAY) ? CS_DESTROY : CS_RESET;
+			if (cur_window_packets > 0 && userdata) {
+				func.on_error(userdata, ECONNRESET);
+			}
 		}
 		break;
 	// prevent warning
@@ -2551,6 +2554,11 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 
 		if (flags == ST_RESET && (conn->conn_id_send == id || conn->conn_id_recv == id)) {
 			LOG_UTPV("0x%08x: recv RST for existing connection", conn);
+			if (!conn->userdata || conn->state == CS_FIN_SENT) {
+				conn->state = CS_DESTROY;
+			} else {
+				conn->state = CS_RESET;
+			}
 			if (conn->userdata) {
 				conn->func.on_overhead(conn->userdata, false, len + conn->get_udp_overhead(),
 									   close_overhead);
@@ -2558,8 +2566,6 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 					ECONNREFUSED :
 					ECONNRESET;
 				conn->func.on_error(conn->userdata, err);
-			} else {
-				conn->state = CS_DESTROY;
 			}
 			return true;
 		} else if (flags != ST_SYN && conn->conn_id_recv == id) {
@@ -2621,6 +2627,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		conn->ack_nr = seq_nr;
 		conn->seq_nr = UTP_Random();
 		conn->fast_resend_seq_nr = conn->seq_nr;
+
 		UTP_SetSockopt(conn, SO_UTPVERSION, version);
 		conn->state = CS_CONNECTED;
 
@@ -2665,18 +2672,19 @@ bool UTP_HandleICMP(const byte* buffer, size_t len, const struct sockaddr *to, s
 		if (conn->addr == addr &&
 			conn->conn_id_recv == id) {
 			// Don't pass on errors for idle/closed connections
-			if (conn->state >= CS_SYN_SENT &&
-				conn->state <= CS_CONNECTED_FULL &&
-				conn->userdata != NULL) {
+			if (conn->state != CS_IDLE) {
+				if (!conn->userdata || conn->state == CS_FIN_SENT) {
+					LOG_UTPV("0x%08x: icmp packet causing socket destruction", conn);
+					conn->state = CS_DESTROY;
+				} else {
+					conn->state = CS_RESET;
+				}
 				if (conn->userdata) {
 					const int err = conn->state == CS_SYN_SENT ?
 						ECONNREFUSED :
 						ECONNRESET;
 					LOG_UTPV("0x%08x: icmp packet causing error on socket:%d", conn, err);
 					conn->func.on_error(conn->userdata, err);
-				} else {
-					LOG_UTPV("0x%08x: icmp packet causing socket destruction", conn);
-					conn->state = CS_DESTROY;
 				}
 			}
 			return true;
