@@ -1378,10 +1378,10 @@ void UTPSocket::check_timeouts()
 			// one window should have at least 3 packets, so don't double
 			// the packet size if the current window can't fit 6 packets
 
-			bool should_increase_packet_size
-				= rate > SERIALIZATIONS_PER_TARGET * packet_size * 1000 / target
-//				&& max_window / packet_size > 5
-				;
+			// each packet takes this many microseconds to send
+			int microseconds_per_packet = uint64(packet_size) * 10000000 / (rate > 0 ? rate : 1);
+
+			bool should_increase_packet_size = SERIALIZATIONS_PER_TARGET * microseconds_per_packet < target;
 
 			// if the average delay has been very low
 			// we can afford to increase the packet size
@@ -1391,11 +1391,7 @@ void UTPSocket::check_timeouts()
 			// if we're already at max, we can't increase the packet size
 			should_increase_packet_size = should_increase_packet_size && (packet_size < max_payload);
 
-
-			bool should_decrease_packet_size
-				= rate < SERIALIZATIONS_PER_TARGET * packet_size * 1000 / 4 / target
-//				|| max_window / packet_size < 3
-				;
+			bool should_decrease_packet_size = SERIALIZATIONS_PER_TARGET * microseconds_per_packet > target * 4;
 
 			// don't decrease if we're already at minimum
 			should_decrease_packet_size = should_decrease_packet_size && packet_size > MIN_PACKET_SIZE;
