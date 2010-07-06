@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include <StdAfx.h>
 
 #include "utp.h"
 #include "templates.h"
