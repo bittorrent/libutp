@@ -30,7 +30,7 @@ typedef sockaddr_storage SOCKADDR_STORAGE;
 // number of bytes to increase max window size by, per RTT. This is
 // scaled down linearly proportional to off_target. i.e. if all packets
 // in one window have 0 delay, window size will increase by this number.
-// Typically it's less.
+// Typically it's less. TCP increases one MSS per RTT, which is 1500
 #define MAX_CWND_INCREASE_BYTES_PER_RTT 3000
 #define CUR_DELAY_SIZE 3
 // experiments suggest that a clock skew of 10 ms per 325 seconds
@@ -691,9 +691,8 @@ struct UTPSocket {
 	void maybe_decay_win()
 	{
 		if (can_decay_win(g_current_ms)) {
-			// TCP uses 0.5, but we also back off on large
-			// delay, so this is just a safety net
-			max_window *= .78;
+			// TCP uses 0.5
+			max_window *= .5;
 			last_rwin_decay = g_current_ms;
 			if (max_window < MIN_WINDOW_SIZE)
 				max_window = MIN_WINDOW_SIZE;
