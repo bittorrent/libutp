@@ -143,4 +143,11 @@ void UTP_GetStats(UTPSocket *socket, UTPStats *stats);
 // point the socket will change to the UTP_STATE_DESTROYING state.
 void UTP_Close(UTPSocket *socket);
 
+struct UTPGlobalStats {
+	uint32 _nraw_recv[4];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (global)
+	uint32 _nraw_send[4];	// total packets sent less than 300/600/1200/MTU bytes for all connections (global)
+};
+
+void UTP_GetGlobalStats(UTPGlobalStats *stats);
+
 #endif //__UTP_H__

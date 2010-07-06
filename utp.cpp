@@ -200,6 +200,14 @@ struct RST_Info {
 	uint16 ack_nr;
 };
 
+#define PACKET_SIZE_SMALL_BUCKET 0
+#define PACKET_SIZE_SMALL 300
+#define PACKET_SIZE_MID_BUCKET 1
+#define PACKET_SIZE_MID 600
+#define PACKET_SIZE_BIG_BUCKET 2
+#define PACKET_SIZE_BIG 1200
+#define PACKET_SIZE_HUGE_BUCKET 3
+
 struct PacketFormat {
 	// connection ID
 	uint32_big connid;
@@ -334,6 +342,8 @@ struct SizableCircularBuffer {
 	void ensure_size(uint item, uint index) { if (index > mask) grow(item, index); }
 	size_t size() { return mask + 1; }
 };
+
+static struct UTPGlobalStats _global_stats;
 
 // Item contains the element we want to make space for
 // index is the index in the list.
@@ -772,10 +782,25 @@ struct UTPSocket {
 Array<RST_Info> g_rst_info;
 Array<UTPSocket*> g_utp_sockets;
 
+static void UTP_RegisterSentPacket(size_t length) {
+	if (length <= PACKET_SIZE_MID) {
+		if (length <= PACKET_SIZE_SMALL) {
+			_global_stats._nraw_send[PACKET_SIZE_SMALL_BUCKET]++;
+		} else
+			_global_stats._nraw_send[PACKET_SIZE_MID_BUCKET]++;
+	} else {
+		if (length <= PACKET_SIZE_BIG) {
+			_global_stats._nraw_send[PACKET_SIZE_BIG_BUCKET]++;
+		} else
+			_global_stats._nraw_send[PACKET_SIZE_HUGE_BUCKET]++;
+	}
+}
+
 void send_to_addr(SendToProc *send_to_proc, void *send_to_userdata, const byte *p, size_t len, const PackedSockAddr &addr)
 {
 	socklen_t tolen;
 	SOCKADDR_STORAGE to = addr.get_sockaddr_storage(&tolen);
+	UTP_RegisterSentPacket(len);
 	send_to_proc(send_to_userdata, p, len, (const struct sockaddr *)&to, tolen);
 }
 
@@ -1663,6 +1688,26 @@ void UTPSocket::apply_ledbat_ccontrol(uint bytes_acked, uint32 actual_delay, int
 			their_hist.delay_base, their_hist.delay_base + their_hist.get_value());
 }
 
+static void UTP_RegisterRecvPacket(UTPSocket *conn, size_t len)
+{
+#ifdef _DEBUG
+	++conn->_stats._nrecv;
+	conn->_stats._nbytes_recv += len;
+#endif
+
+	if (len <= PACKET_SIZE_MID) {
+		if (len <= PACKET_SIZE_SMALL) {
+			_global_stats._nraw_recv[PACKET_SIZE_SMALL_BUCKET]++;
+		} else 
+			_global_stats._nraw_recv[PACKET_SIZE_MID_BUCKET]++;
+	} else {
+		if (len <= PACKET_SIZE_BIG) {
+			_global_stats._nraw_recv[PACKET_SIZE_BIG_BUCKET]++;
+		} else 
+			_global_stats._nraw_recv[PACKET_SIZE_HUGE_BUCKET]++;
+	}
+}
+
 // returns the max number of bytes of payload the uTP
 // connection is allowed to send
 uint16 UTPSocket::get_packet_size()
@@ -1690,10 +1735,7 @@ uint16 UTPSocket::get_packet_size()
 // as soon as the header is done
 uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool syn = false)
 {
-#ifdef _DEBUG
-	++conn->_stats._nrecv;
-	conn->_stats._nbytes_recv += len;
-#endif
+	UTP_RegisterRecvPacket(conn, len);
 
 	g_current_ms = UTP_GetMilliseconds();
 
@@ -2750,6 +2792,11 @@ void UTP_GetStats(UTPSocket *conn, UTPStats *stats)
 	*stats = conn->_stats;
 }
 #endif // _DEBUG
+
+void UTP_GetGlobalStats(UTPGlobalStats *stats)
+{
+	*stats = _global_stats;
+}
 
 // Close the UTP socket.
 // It is not valid for the upper layer to refer to socket after it is closed.
