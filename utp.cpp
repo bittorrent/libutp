@@ -1780,7 +1780,7 @@ uint UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool s
 	// Unpack UTP packet options
 	// Data pointer
 	const byte *data = (const byte*)pf + conn->get_header_size();
-	if (header_size > len) {
+	if (conn->get_header_size() > len) {
 		LOG_UTPV("0x%08x: Invalid packet size (less than header size)", conn);
 		return 0;
 	}
