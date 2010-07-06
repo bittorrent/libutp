@@ -1522,19 +1522,22 @@ void UTPSocket::selective_ack(uint base, const byte *mask, uint len)
 		// this counts as a duplicate ack, even though we might have
 		// received an ack for this packet previously (in another EACK
 		// message for instance)
-		count++;
+		bool bit_set = bits >= 0 && mask[bits>>3] & (1 << (bits & 7));
+
+		// if this packet is acked, it counts towards the duplicate ack counter
+		if (bit_set) count++;
 
 		// ignore bits that represents packets we haven't sent yet
 		// or packets that have already been acked
 		OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(v);
 		if (!pkt || pkt->transmissions == 0) {
-			LOG_UTPV("0x%08x: skipping %d. pkt:%p transmissions:%d %s",
+			LOG_UTPV("0x%08x: skipping %d. pkt:%08x transmissions:%d %s",
 					 this, v, pkt, pkt?pkt->transmissions:0, pkt?"(not sent yet?)":"(already acked?)");
 			continue;
 		}
 
 		// Count the number of segments that were successfully received past it.
-		if (bits >= 0 && mask[bits>>3] & (1 << (bits & 7))) {
+		if (bits_set) {
 			// the selective ack should never ACK the packet we're waiting for to decrement cur_window_packets
 			assert((v & outbuf.mask) != ((seq_nr - cur_window_packets) & outbuf.mask));
 			ack_packet(v);
