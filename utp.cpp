@@ -200,13 +200,17 @@ struct RST_Info {
 	uint16 ack_nr;
 };
 
-#define PACKET_SIZE_SMALL_BUCKET 0
-#define PACKET_SIZE_SMALL 300
-#define PACKET_SIZE_MID_BUCKET 1
-#define PACKET_SIZE_MID 600
-#define PACKET_SIZE_BIG_BUCKET 2
-#define PACKET_SIZE_BIG 1200
-#define PACKET_SIZE_HUGE_BUCKET 3
+// these packet sizes are including the uTP header wich
+// is either 20 or 23 bytes depending on version
+#define PACKET_SIZE_EMPTY_BUCKET 0
+#define PACKET_SIZE_EMPTY 23
+#define PACKET_SIZE_SMALL_BUCKET 1
+#define PACKET_SIZE_SMALL 373
+#define PACKET_SIZE_MID_BUCKET 2
+#define PACKET_SIZE_MID 723
+#define PACKET_SIZE_BIG_BUCKET 3
+#define PACKET_SIZE_BIG 1423
+#define PACKET_SIZE_HUGE_BUCKET 4
 
 struct PacketFormat {
 	// connection ID
@@ -783,7 +787,9 @@ Array<UTPSocket*> g_utp_sockets;
 
 static void UTP_RegisterSentPacket(size_t length) {
 	if (length <= PACKET_SIZE_MID) {
-		if (length <= PACKET_SIZE_SMALL) {
+		if (length <= PACKET_SIZE_EMPTY) {
+			_global_stats._nraw_send[PACKET_SIZE_EMPTY_BUCKET]++;
+		} else if (length <= PACKET_SIZE_SMALL) {
 			_global_stats._nraw_send[PACKET_SIZE_SMALL_BUCKET]++;
 		} else
 			_global_stats._nraw_send[PACKET_SIZE_MID_BUCKET]++;
@@ -1698,7 +1704,9 @@ static void UTP_RegisterRecvPacket(UTPSocket *conn, size_t len)
 #endif
 
 	if (len <= PACKET_SIZE_MID) {
-		if (len <= PACKET_SIZE_SMALL) {
+		if (len <= PACKET_SIZE_EMPTY) {
+			_global_stats._nraw_recv[PACKET_SIZE_EMPTY_BUCKET]++;
+		} else if (len <= PACKET_SIZE_SMALL) {
 			_global_stats._nraw_recv[PACKET_SIZE_SMALL_BUCKET]++;
 		} else 
 			_global_stats._nraw_recv[PACKET_SIZE_MID_BUCKET]++;
