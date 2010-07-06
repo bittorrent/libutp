@@ -745,7 +745,8 @@ struct UTPSocket {
 		if (!DYNAMIC_PACKET_SIZE_ENABLED) {
 			return get_max_payload_size();
 		}
-		const size_t s = MIN_PACKET_SIZE * clamp(1, 8, DYNAMIC_PACKET_SIZE_FACTOR);
+		const size_t s = MIN_PACKET_SIZE
+			* clamp(DYNAMIC_PACKET_SIZE_FACTOR, 1, 8);
 		assert(s <= get_max_payload_size());
 		return s;
 	}
