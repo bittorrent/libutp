@@ -2689,8 +2689,8 @@ bool UTP_Write(UTPSocket *conn, size_t bytes)
 	conn->update_send_quota();
 
 	// don't send unless it will all fit in the window
-	uint packet_size = conn->get_packet_size();
-	size_t num_to_send = min(bytes, packet_size);
+	size_t packet_size = conn->get_packet_size();
+	size_t num_to_send = min<size_t>(bytes, packet_size);
 	while (conn->is_writable(num_to_send)) {
 		// Send an outgoing packet.
 		// Also add it to the outgoing of packets that have been sent but not ACKed.
@@ -2707,7 +2707,7 @@ bool UTP_Write(UTPSocket *conn, size_t bytes)
 				 conn->last_rcv_win, num_to_send, conn->send_quota / 100,
 				 conn->cur_window_packets);
 		conn->write_outgoing_packet(num_to_send, ST_DATA);
-		num_to_send = min(bytes, packet_size);
+		num_to_send = min<size_t>(bytes, packet_size);
 	}
 
 	// mark the socket as not being writable.
