@@ -19,11 +19,7 @@
 extern "C" {
 #endif
 
-#ifndef __cplusplus
-struct UTPSocket { char _unused; };
-#else
 struct UTPSocket;
-#endif
 
 // Used to set sockopt on a uTP socket to set the version of uTP
 // to use for outgoing connections. This can only be called before
