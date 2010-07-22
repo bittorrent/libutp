@@ -15,7 +15,15 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef __cplusplus
+struct UTPSocket { char _unused; };
+#else
 struct UTPSocket;
+#endif
 
 // Used to set sockopt on a uTP socket to set the version of uTP
 // to use for outgoing connections. This can only be called before
@@ -70,9 +78,10 @@ struct UTPFunctionTable {
 	UTPOnOverheadProc *on_overhead;
 };
 
+
 // The uTP socket layer calls this when a new incoming uTP connection is established
 // this implies writability
-typedef void UTPGotIncomingConnection(UTPSocket* s);
+typedef void UTPGotIncomingConnection(struct UTPSocket* s);
 
 // The uTP socket layer calls this to send UDP packets
 typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen);
@@ -81,17 +90,17 @@ typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct 
 // Functions which can be called with a uTP socket
 
 // Create a uTP socket
-UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata,
+struct UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata,
 					  const struct sockaddr *addr, socklen_t addrlen);
 
 // Setup the callbacks - must be done before connect or on incoming connection
-void UTP_SetCallbacks(UTPSocket *socket, UTPFunctionTable *func, void *userdata);
+void UTP_SetCallbacks(struct UTPSocket *socket, struct UTPFunctionTable *func, void *userdata);
 
 // Valid options include SO_SNDBUF, SO_RCVBUF and SO_UTPVERSION
-bool UTP_SetSockopt(UTPSocket *socket, int opt, int val);
+bool UTP_SetSockopt(struct UTPSocket *socket, int opt, int val);
 
 // Try to connect to a specified host.
-void UTP_Connect(UTPSocket *socket);
+void UTP_Connect(struct UTPSocket *socket);
 
 // Process a UDP packet from the network. This will process a packet for an existing connection,
 // or create a new connection and call incoming_proc. Returns true if the packet was processed
@@ -105,10 +114,10 @@ bool UTP_HandleICMP(const byte* buffer, size_t len, const struct sockaddr *to, s
 
 // Write bytes to the uTP socket. Returns the number of bytes actually written.
 // Returns true if the socket is still writable.
-bool UTP_Write(UTPSocket *socket, size_t count);
+bool UTP_Write(struct UTPSocket *socket, size_t count);
 
 // Notify the uTP socket of buffer drain
-void UTP_RBDrained(UTPSocket *socket);
+void UTP_RBDrained(struct UTPSocket *socket);
 
 // Call periodically to process timeouts and other periodic events
 void UTP_CheckTimeouts();
@@ -116,11 +125,11 @@ void UTP_CheckTimeouts();
 // Retrieves the peer address of the specified socket, stores this address in the
 // sockaddr structure pointed to by the addr argument, and stores the length of this
 // address in the object pointed to by the addrlen argument.
-void UTP_GetPeerName(UTPSocket *socket, struct sockaddr *addr, socklen_t *addrlen);
+void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t *addrlen);
 
-void UTP_GetDelays(UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
+void UTP_GetDelays(struct UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
 
-uint UTP_GetPacketSize(UTPSocket *socket);
+uint UTP_GetPacketSize(struct UTPSocket *socket);
 
 #ifdef _DEBUG
 struct UTPStats {
@@ -134,20 +143,24 @@ struct UTPStats {
 };
 
 // Get stats for UTP socket
-void UTP_GetStats(UTPSocket *socket, UTPStats *stats);
+void UTP_GetStats(struct UTPSocket *socket, UTPStats *stats);
 #endif
 
 // Close the UTP socket.
 // It is not valid to issue commands for this socket after it is closed.
 // This does not actually destroy the socket until outstanding data is sent, at which
 // point the socket will change to the UTP_STATE_DESTROYING state.
-void UTP_Close(UTPSocket *socket);
+void UTP_Close(struct UTPSocket *socket);
 
 struct UTPGlobalStats {
 	uint32 _nraw_recv[5];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (global)
 	uint32 _nraw_send[5];	// total packets sent less than 300/600/1200/MTU bytes for all connections (global)
 };
 
-void UTP_GetGlobalStats(UTPGlobalStats *stats);
+void UTP_GetGlobalStats(struct UTPGlobalStats *stats);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif //__UTP_H__

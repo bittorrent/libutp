@@ -31,11 +31,12 @@ CASSERT(8 == sizeof(int64), sizeof_int64_is_8)
 #define INT64_MAX 0x7fffffffffffffffLL
 #endif
 
-typedef const wchar_t * cwstr;
-typedef wchar_t * wstr;
-
 // always ANSI
 typedef const char * cstr;
 typedef char * str;
+
+#ifndef __cplusplus
+typedef uint8 bool;
+#endif
 
 #endif //__UTYPES_H__
