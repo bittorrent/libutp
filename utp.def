@@ -11,3 +11,5 @@ EXPORTS
    UTP_GetPeerName   @10
    UTP_GetDelays     @11
    UTP_Close         @12
+   inet_ntop         @13
+   inet_pton         @14
