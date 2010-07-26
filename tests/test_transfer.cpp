@@ -36,7 +36,7 @@ struct utp_socket {
 	~utp_socket();
 
 	void close();
-	int write(char const* buf, size_t count);
+	size_t write(char const* buf, size_t count);
 	void flush_write();
 
 	static void utp_read(void* socket, const byte* bytes, size_t count);
@@ -49,10 +49,10 @@ struct utp_socket {
 	{ return 0; }
 
 	// write buffer
-	int _buf_size;
+	size_t _buf_size;
 	char _buffer[10*1024*2];
 
-	int _read_bytes;
+	size_t _read_bytes;
 	bool _connected;
 	bool _readable;
 	bool _writable;
@@ -77,7 +77,7 @@ struct TestUdpOutgoing {
 	int timestamp;
 	SOCKADDR_STORAGE addr;
 	socklen_t addrlen;
-	uint len;
+	size_t len;
 	byte mem[1];
 };
 
@@ -150,7 +150,7 @@ void test_manager::Flush(uint32 start_time, uint32 max_time)
 		TestUdpOutgoing *uo = _send_buffer[i];
 //		utassert(uo);
 
-		if (uo->timestamp > g_current_ms) continue;
+		if ((uint32)uo->timestamp > g_current_ms) continue;
 
 		if (_receiver) {
 			// Lookup the right UTP socket that can handle this message
@@ -307,11 +307,11 @@ void utp_socket::on_utp_error(void *socket, int errcode)
 	usock->close();
 }
 
-int utp_socket::write(char const* buf, size_t count)
+size_t utp_socket::write(char const* buf, size_t count)
 {
-	int free = sizeof(_buffer) - _buf_size;
-	utassert(free >= 0);
-	int to_write = count < free ? count : free;
+	assert(_buf_size <= sizeof(_buffer));
+	size_t free = sizeof(_buffer) - _buf_size;
+	size_t to_write = count < free ? count : free;
 	if (to_write == 0) return 0;
 	memcpy(_buffer + _buf_size, buf, to_write);
 	_buf_size += count;
@@ -394,11 +394,11 @@ void test_transfer(int flags)
 	if (!sender->_connected) return;
 
 	char buffer[16*1024];
-	for (int i = 0; i < sizeof(buffer); ++i) buffer[i] = i & 0xff;
+	for (size_t i = 0; i < sizeof(buffer); ++i) buffer[i] = i & 0xff;
 
-	const int send_target = 10 * 16 * 1024;
+	const size_t send_target = 10 * 16 * 1024;
 
-	int written = sender->write(buffer, sizeof(buffer));
+	size_t written = sender->write(buffer, sizeof(buffer));
 	utassert(written > 0);
 
 	for (int i = 0; i < 20000; ++i) {

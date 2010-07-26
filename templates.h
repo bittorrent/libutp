@@ -65,9 +65,8 @@ typedef big_endian<uint16> uint16_big;
 template<typename T> static inline void zeromem(T *a, size_t count = 1) { memset(a, 0, count * sizeof(T)); }
 
 typedef int SortCompareProc(const void *, const void *);
-void QuickSort(void *base,unsigned num,unsigned width,SortCompareProc *comp);
 
-template<typename T> static FORCEINLINE void QuickSortT(T *base,unsigned num,int (*comp)(const T *, const T *)) { qsort(base, num, sizeof(T), (SortCompareProc*)comp); }
+template<typename T> static FORCEINLINE void QuickSortT(T *base, size_t num, int (*comp)(const T *, const T *)) { qsort(base, num, sizeof(T), (SortCompareProc*)comp); }
 
 
 // WARNING: The template parameter MUST be a POD type!
@@ -85,7 +84,7 @@ public:
 	void inline Init(size_t init) { Init(); if (init) Resize(init); }
 	size_t inline GetCount() const { return count; }
 	size_t inline GetAlloc() const { return alloc; }
-	void inline SetCount(int c) { count = c; }
+	void inline SetCount(size_t c) { count = c; }
 
 	inline T& operator[](size_t offset) { assert(offset ==0 || offset<alloc); return mem[offset]; }
 	inline const T& operator[](size_t offset) const { assert(offset ==0 || offset<alloc); return mem[offset]; }

@@ -12,5 +12,5 @@ uint32 UTP_Random();
 // This is called every time we have a delay sample is made
 void UTP_DelaySample(const struct sockaddr *remote, int sample_ms);
 // Should return the max packet size to use when sending to the given address
-uint32 UTP_GetPacketSize(const struct sockaddr *remote);
+size_t UTP_GetPacketSize(const struct sockaddr *remote);
 

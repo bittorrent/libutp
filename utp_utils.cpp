@@ -190,5 +190,5 @@ uint32 UTP_Random()
 }
 
 void UTP_DelaySample(const struct sockaddr *remote, int sample_ms) {}
-uint32 UTP_GetPacketSize(const struct sockaddr *remote) { return 1500; }
+size_t UTP_GetPacketSize(const struct sockaddr *remote) { return 1500; }
 
