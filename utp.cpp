@@ -1773,7 +1773,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 
 	if (pk_flags >= ST_NUM_STATES) return 0;
 
-	LOG_UTPV("0x%08x: Got %s. seq_nr:%u, ack_nr:%u, state:%s version:%u timestamp:"I64u" reply_micro:%u",
+	LOG_UTPV("0x%08x: Got %s. seq_nr:%u ack_nr:%u state:%s version:%u timestamp:"I64u" reply_micro:%u",
 			 conn, flagnames[pk_flags], pk_seq_nr, pk_ack_nr, statenames[conn->state], conn->version,
 			 conn->version == 0?(uint64)(pf->tv_sec) * 1000000 + pf->tv_usec:uint64(pf1->tv_usec),
 			 conn->version == 0?(uint32)(pf->reply_micro):(uint32)(pf1->reply_micro));
@@ -2085,7 +2085,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 	// this invariant should always be true
 	assert(conn->cur_window_packets == 0 || conn->outbuf.get(conn->seq_nr - conn->cur_window_packets));
 
-	LOG_UTPV("0x%08x: acks:%d, acked_bytes:%u seq_nr:%u cur_window:%u cur_window_packets:%u quota:%d",
+	LOG_UTPV("0x%08x: acks:%d acked_bytes:%u seq_nr:%u cur_window:%u cur_window_packets:%u quota:%d",
 			 conn, acks, (uint)acked_bytes, conn->seq_nr, (uint)conn->cur_window, conn->cur_window_packets,
 			 conn->send_quota / 100);
 
@@ -2716,7 +2716,7 @@ bool UTP_Write(UTPSocket *conn, size_t bytes)
 		}
 		bytes -= num_to_send;
 
-		LOG_UTPV("0x%08x: Sending packet. seq_nr:%u ack_nr:%u wnd:%u/%u/%u rcv_win:%u size:%u quota:%d, cur_window_packets:%u",
+		LOG_UTPV("0x%08x: Sending packet. seq_nr:%u ack_nr:%u wnd:%u/%u/%u rcv_win:%u size:%u quota:%d cur_window_packets:%u",
 				 conn, conn->seq_nr, conn->ack_nr,
 				 (uint)(conn->cur_window + num_to_send),
 				 (uint)conn->max_window, (uint)conn->max_window_user,
