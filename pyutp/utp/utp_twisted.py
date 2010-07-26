@@ -312,7 +312,8 @@ class Connector(base.BaseConnector):
         if isinstance(port, types.StringTypes):
             try:
                 port = socket.getservbyname(port, 'tcp')
-            except socket.error as e:
+            except socket.error:
+                e = sys.exc_info()[1]
                 raise error.ServiceNameUnknownError(string="%s (%r)" % (e, port))
         self.port = port
         self.adapter = adapter
