@@ -5,13 +5,13 @@ import platform
 from utp.utp_h import *
 from utp.sockaddr_types import *
 
-basename = os.path.join(os.path.dirname(__file__), "..", "utp")
+basepath = os.path.join(os.path.dirname(__file__), "..")
 if platform.system() == "Windows":
-    utp = ctypes.cdll.LoadLibrary(basename + ".dll")
+    utp = ctypes.cdll.LoadLibrary(os.path.join(basepath, "utp.dll"))
 elif platform.system() == "Darwin":
-    utp = ctypes.cdll.LoadLibrary(basename + ".dylib")
+    utp = ctypes.cdll.LoadLibrary(os.path.join(basepath, "libutp.dylib"))
 else:
-    utp = ctypes.cdll.LoadLibrary(basename + ".so")
+    utp = ctypes.cdll.LoadLibrary(os.path.join(basepath, "libutp.so"))
 
 from utp.inet_ntop import inet_ntop, inet_pton
 
