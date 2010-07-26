@@ -455,7 +455,8 @@ def connectUTP(self, host, port, factory, timeout=30, bindAddress=None):
     adapter = None
     try:
         adapter = self.createUTPAdapter(bindAddress[1], Protocol(), interface=bindAddress[0])
-    except error.CannotListenError as e:
+    except error.CannotListenError:
+        e = sys.exc_info()[1]
         c = Connector(host, port, factory, None, timeout, self)
         se = e.socketError
         # We have to call connect to trigger the factory start and connection
