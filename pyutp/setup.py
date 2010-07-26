@@ -17,6 +17,9 @@ if os.name == "nt":
     extra_link_args.append('/DEF:"../utp.def"')
 else:
     define_macros.append(("POSIX", 1))
+    r = os.system('echo "int main() {}"|gcc -x c - -lrt 2>/dev/null')
+    if r == 0:
+        libraries.append("rt")
 
 # http://bugs.python.org/issue9023
 sources = [os.path.abspath(x) for x in sources]
