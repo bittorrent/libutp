@@ -147,7 +147,6 @@ struct PackedSockAddr {
 			_in._in6addr = sin6->sin6_addr;
 			_port = ntohs(sin6->sin6_port);
 		}
-		assert(sa->ss_family == get_family());
 	}
 
 	SOCKADDR_STORAGE get_sockaddr_storage(socklen_t *len = NULL) const
