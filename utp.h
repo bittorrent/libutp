@@ -126,7 +126,7 @@ void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t 
 
 void UTP_GetDelays(struct UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
 
-uint UTP_GetPacketSize(struct UTPSocket *socket);
+size_t UTP_GetPacketSize(struct UTPSocket *socket);
 
 #ifdef _DEBUG
 struct UTPStats {
