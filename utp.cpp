@@ -208,7 +208,7 @@ struct RST_Info {
 #define PACKET_SIZE_MID_BUCKET 2
 #define PACKET_SIZE_MID 723
 #define PACKET_SIZE_BIG_BUCKET 3
-#define PACKET_SIZE_BIG 1423
+#define PACKET_SIZE_BIG 1400
 #define PACKET_SIZE_HUGE_BUCKET 4
 
 struct PacketFormat {
