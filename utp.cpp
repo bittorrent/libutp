@@ -666,7 +666,7 @@ struct UTPSocket {
 #ifdef _DEBUG
 	// Public stats, returned by UTP_GetStats().  See utp.h
 	UTPStats _stats;
-#endif
+#endif // _DEBUG
 
 	// Calculates the current receive window
 	size_t get_rcv_window() const
@@ -2773,6 +2773,11 @@ void UTP_CheckTimeouts()
 			i--;
 		}
 	}
+}
+
+size_t UTP_GetPacketSize(UTPSocket *socket)
+{
+	return socket->get_packet_size();
 }
 
 void UTP_GetPeerName(UTPSocket *conn, struct sockaddr *addr, socklen_t *addrlen)
