@@ -1848,8 +1848,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 	// Getting an invalid sequence number?
 	if (seqnr >= REORDER_BUFFER_MAX_SIZE) {
 		if (seqnr >= (SEQ_NR_MASK + 1) - REORDER_BUFFER_MAX_SIZE && pk_flags != ST_STATE) {
-			conn->ack_time = min<uint>(conn->ack_time, g_current_ms
-				+ DELAYED_ACK_TIME_THRESHOLD);
+			conn->ack_time = g_current_ms + min<uint>(conn->ack_time - g_current_ms, DELAYED_ACK_TIME_THRESHOLD);
 		}
 		LOG_UTPV("    Got old Packet/Ack (%u/%u)=%u!", pk_seq_nr, conn->ack_nr, seqnr);
 		return 0;
@@ -2185,8 +2184,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 		}
 
 		// start the delayed ACK timer
-		conn->ack_time = min<uint>(conn->ack_time, g_current_ms
-			+ DELAYED_ACK_TIME_THRESHOLD);
+		conn->ack_time = g_current_ms + min<uint>(conn->ack_time - g_current_ms, DELAYED_ACK_TIME_THRESHOLD);
 	} else {
 		// Getting an out of order packet.
 		// The packet needs to be remembered and rearranged later.
@@ -2247,7 +2245,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 			conn, conn->reorder_count, (uint)(packet_end - data), (uint)conn->func.get_rb_size(conn->userdata));
 
 		// Setup so the partial ACK message will get sent immediately.
-		conn->ack_time = min<uint>(conn->ack_time, g_current_ms + 1);
+		conn->ack_time = g_current_ms + min<uint>(conn->ack_time - g_current_ms, 1);
 	}
 
 	// If ack_time or ack_bytes indicate that we need to send and ack, send one
@@ -2742,8 +2740,7 @@ void UTP_RBDrained(UTPSocket *conn)
 		if (conn->last_rcv_win == 0) {
 			conn->send_ack();
 		} else {
-			conn->ack_time = min<uint>(conn->ack_time, UTP_GetMilliseconds()
-				+ DELAYED_ACK_TIME_THRESHOLD);
+			conn->ack_time = g_current_ms + min<uint>(conn->ack_time - g_current_ms, DELAYED_ACK_TIME_THRESHOLD);
 		}
 	}
 }
