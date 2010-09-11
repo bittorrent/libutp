@@ -22,6 +22,10 @@ indicate the number of bytes you wish to write. As packets are created, the
 on_write callback is called for each packet, so you can fill the buffers with
 data.
 
+The libutp interface is not thread-safe. It was designed for use in a
+single-threaded asyncronous context, although with proper synchronization
+it may be used from a multi-threaded environment as well.
+
 See utp.h for more details and other API documentation.
 
 ## Examples
