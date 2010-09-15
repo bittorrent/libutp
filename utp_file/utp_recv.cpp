@@ -236,7 +236,7 @@ void utp_overhead(void *socket, bool send, size_t count, int type)
 {
 }
 
-void got_incoming_connection(UTPSocket *socket)
+void got_incoming_connection(void *userdata, UTPSocket *socket)
 {
 	printf("got incoming conenction: %p\n", socket);
 	assert(!utp_socket);

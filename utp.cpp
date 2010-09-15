@@ -2624,7 +2624,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		LOG_UTPV("0x%08x: recv send connect ACK", conn);
 		conn->send_ack(true);
 
-		incoming_proc(conn);
+		incoming_proc(send_to_userdata, conn);
 
 		// we report overhead after incoming_proc, because the callbacks are setup now
 		if (conn->userdata) {

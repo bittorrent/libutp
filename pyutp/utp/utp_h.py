@@ -45,7 +45,7 @@ class UTPFunctionTable(ctypes.Structure):
 
 
 # typedef void UTPGotIncomingConnection(UTPSocket* s);
-UTPGotIncomingConnection = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+UTPGotIncomingConnection = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
 
 # typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen);
 SendToProc = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_byte), ctypes.c_size_t, LPSOCKADDR, socklen_t)

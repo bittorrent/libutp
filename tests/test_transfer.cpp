@@ -128,12 +128,9 @@ int ComparePacketTimestamp(TestUdpOutgoing* const* lhs, TestUdpOutgoing* const* 
 	return (*lhs)->timestamp - (*rhs)->timestamp;
 }
 
-// HACK
-test_manager* incoming_userdata = NULL;
-
-void test_incoming_proc(UTPSocket* conn)
+void test_incoming_proc(void *userdata, UTPSocket* conn)
 {
-	incoming_userdata->IncomingUTP(conn);
+	((test_manager*)userdata)->IncomingUTP(conn);
 }
 
 void test_send_to_proc(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen)
@@ -154,7 +151,6 @@ void test_manager::Flush(uint32 start_time, uint32 max_time)
 
 		if (_receiver) {
 			// Lookup the right UTP socket that can handle this message
-			incoming_userdata = this;
 			UTP_IsIncomingUTP(&test_incoming_proc, &test_send_to_proc, _receiver, uo->mem, uo->len,
 							  (const struct sockaddr*)&uo->addr, uo->addrlen);
 		}

@@ -207,7 +207,7 @@ void send_to(void *userdata, const byte *p, size_t len, const struct sockaddr *t
 	((UDPSocketManager*)userdata)->Send(p, len, to, tolen);
 }
 
-void got_incoming_connection(UTPSocket* s)
+void got_incoming_connection(void *userdata, UTPSocket* s)
 {
 	printf("incoming socket %p\n", s);
 	socket_state sock;

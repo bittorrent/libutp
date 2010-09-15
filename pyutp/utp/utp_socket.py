@@ -146,7 +146,7 @@ class Callbacks(object):
 
 
 def wrap_incoming(f, send_to_proc):
-    def unwrap_incoming(utp_socket):
+    def unwrap_incoming(userdata, utp_socket):
         us = Socket()
         us.set_socket(utp_socket, send_to_proc)
         f(us)

@@ -78,7 +78,7 @@ struct UTPFunctionTable {
 
 // The uTP socket layer calls this when a new incoming uTP connection is established
 // this implies writability
-typedef void UTPGotIncomingConnection(struct UTPSocket* s);
+typedef void UTPGotIncomingConnection(void *userdata, struct UTPSocket* s);
 
 // The uTP socket layer calls this to send UDP packets
 typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen);
