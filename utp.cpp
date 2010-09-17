@@ -1920,12 +1920,12 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 	// record the delay to report back
 	const uint32 their_delay = (uint32)(p == 0 ? 0 : time - p);
 	conn->reply_micro = their_delay;
+	uint32 prev_delay_base = conn->their_hist.delay_base;
 	if (their_delay != 0) conn->their_hist.add_sample(their_delay);
 
 	// if their new delay base is less than their previous one
 	// we should shift our delay base in the other direction in order
 	// to take the clock skew into account
-	uint32 prev_delay_base = conn->their_hist.delay_base;
 	if (prev_delay_base != 0 &&
 		wrapping_compare_less(conn->their_hist.delay_base, prev_delay_base)) {
 		// never adjust more than 10 milliseconds
