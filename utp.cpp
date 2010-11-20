@@ -1935,8 +1935,8 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 	}
 
 	const uint32 actual_delay = conn->version==0
-		?(pf->reply_micro==INT_MAX?0:(uint)pf->reply_micro)
-		:(uint)pf1->reply_micro;
+		?(pf->reply_micro==INT_MAX?0:uint32(pf->reply_micro))
+		:(uint32(pf1->reply_micro)==INT_MAX?0:uint32(pf1->reply_micro));
 
 	assert(conn->our_hist.get_value() >= 0);
 	// if the actual delay is 0, it means the other end
