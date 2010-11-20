@@ -12,4 +12,4 @@ utp:=utp.cpp utp_utils.cpp
 cflags:=-fno-exceptions -fno-rtti
 
 libutp.so:
-	g++ -Wall -ansi --shared -o libutp.so -g $(utp) -DPOSIX -I . -I utp_config_lib $(libs) $(cflags)
+	g++ -Wall -ansi -fPIC --shared -o libutp.so -g $(utp) -DPOSIX -I . -I utp_config_lib $(libs) $(cflags)
