@@ -117,7 +117,7 @@ bool UTP_Write(struct UTPSocket *socket, size_t count);
 void UTP_RBDrained(struct UTPSocket *socket);
 
 // Call periodically to process timeouts and other periodic events
-void UTP_CheckTimeouts();
+void UTP_CheckTimeouts(void);
 
 // Retrieves the peer address of the specified socket, stores this address in the
 // sockaddr structure pointed to by the addr argument, and stores the length of this
