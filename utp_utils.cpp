@@ -112,36 +112,46 @@ uint64 UTP_GetMicroseconds()
 	return ((tick - start_tick) * sTimebaseInfo.numer) / (sTimebaseInfo.denom * 1000);
 }
 
-#elif _POSIX_TIMERS && defined(_POSIX_MONOTONIC_CLOCK) && (_POSIX_MONOTONIC_CLOCK >= 0) && defined(CLOCK_MONOTONIC)
-
-uint64 UTP_GetMicroseconds()
-{
-	timespec t;
-	int status = clock_gettime(CLOCK_MONOTONIC, &t);
-#ifdef _DEBUG
-	if (status) printf("clock_gettime returned %d - error %d %s", status, errno, ::strerror(errno));
-#endif
-	assert(status == 0);
-	uint64 tick = uint64(t.tv_sec) * 1000000 + uint64(t.tv_nsec) / 1000;
-	return tick;
-}
-
 #else
 
-#warning "Using non-monotonic function gettimeofday() in UTP_GetMicroseconds()"
-// Fallback
+/* Unfortunately, #ifdef CLOCK_MONOTONIC is not enough to make sure that
+   POSIX clocks work -- we could be running a recent libc with an ancient
+   kernel (think OpenWRT). -- jch */
 
 uint64 UTP_GetMicroseconds()
 {
-	static time_t start_time = 0;
+	static int have_posix_clocks = -1;
+	int rc;
 
-	timeval t;
-	::gettimeofday(&t, NULL);
+#if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0 && defined(CLOCK_MONOTONIC)
+	if(have_posix_clocks < 0) {
+		struct timespec ts;
+		rc = clock_gettime(CLOCK_MONOTONIC, &ts);
+		if(rc < 0) {
+			have_posix_clocks = 0;
+		} else {
+			have_posix_clocks = 1;
+		}
+	}
 
-	// avoid overflow by subtracting the seconds
-	if (start_time == 0) start_time = t.tv_sec;
-
-	return uint64(t.tv_sec - start_time) * 1000000 + (t.tv_usec);
+	if (have_posix_clocks) {
+		struct timespec ts;
+		rc = clock_gettime(CLOCK_MONOTONIC, &ts);
+		return uint64(ts.tv_sec) * 1000000 + ts.tv_nsec / 1000;
+	}
+#endif
+	{
+		static time_t offset = 0, previous = 0;
+		struct timeval tv;
+		rc = gettimeofday(&tv, NULL);
+		tv.tv_sec += offset;
+		if(previous > tv.tv_sec) {
+			offset += previous - tv.tv_sec;
+			tv.tv_sec = previous;
+		}
+		previous = tv.tv_sec;
+		return uint64(tv.tv_sec) * 1000000 + tv.tv_usec;
+	}
 }
 #endif
 
