@@ -109,7 +109,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 // Process an ICMP received UDP packet.
 bool UTP_HandleICMP(const byte* buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
 
-// Write bytes to the uTP socket. Returns the number of bytes actually written.
+// Write bytes to the uTP socket.
 // Returns true if the socket is still writable.
 bool UTP_Write(struct UTPSocket *socket, size_t count);
 
