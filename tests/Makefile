@@ -8,7 +8,7 @@ else
   libs:=
 endif
 
-utp:=../utp.cpp ../utp_utils.cpp
+utp:=../libutp.a
 cflags:=-fno-exceptions -fno-rtti
 
 tests: test_transfer.cpp
