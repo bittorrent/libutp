@@ -2069,10 +2069,13 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 		// Fast timeout-retry
 		if (conn->fast_timeout) {
 			LOG_UTPV("Fast timeout %u,%u,%u?", (uint)conn->cur_window, conn->seq_nr - conn->timeout_seq_nr, conn->timeout_seq_nr);
-			if (((conn->fast_resend_seq_nr - conn->timeout_seq_nr) & ACK_NR_MASK) >= 0 ||
-				((conn->seq_nr - conn->cur_window_packets) & ACK_NR_MASK) != conn->fast_resend_seq_nr) {
+			// if the fast_resend_seq_nr is not pointing to the oldest outstanding packet, it suggests that we've already
+			// resent the packet that timed out, and we should leave the fast-timeout mode.
+			if (((conn->seq_nr - conn->cur_window_packets) & ACK_NR_MASK) != conn->fast_resend_seq_nr) {
 				conn->fast_timeout = false;
 			} else {
+				// resend the oldest packet and increment fast_resend_seq_nr
+				// to not allow another fast resend on it again
 				OutgoingPacket *pkt = (OutgoingPacket*)conn->outbuf.get(conn->seq_nr - conn->cur_window_packets);
 				if (pkt && pkt->transmissions > 0) {
 					LOG_UTPV("0x%08x: Packet %u fast timeout-retry.", conn, conn->seq_nr - conn->cur_window_packets);
