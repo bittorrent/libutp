@@ -1965,6 +1965,13 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 		}
 	}
 */
+
+	// if the delay estimate exceeds the RTT, adjust the base_delay to
+	// compensate
+	if (conn->our_hist.get_value() > uint32(min_rtt)) {
+		conn->our_hist.shift(conn->our_hist.get_value() - min_rtt);
+	}
+
 	// only apply the congestion controller on acks
 	// if we don't have a delay measurement, there's
 	// no point in invoking the congestion control
