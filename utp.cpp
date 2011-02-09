@@ -433,7 +433,7 @@ struct DelayHist {
 	void shift(const uint32 offset)
 	{
 		// the offset should never be "negative"
-		assert(offset < 0x10000000);
+		// assert(offset < 0x10000000);
 
 		// increase all of our base delays by this amount
 		// this is used to take clock skew into account
