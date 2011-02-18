@@ -36,7 +36,12 @@ typedef const char * cstr;
 typedef char * str;
 
 #ifndef __cplusplus
-typedef uint8 bool;
+/* This was introduced in C99, but all modern compilers support inclusion
+   of stdbool even when in C86 mode.  If it fails for you, try
+       typedef uint8 bool;
+   instead.
+*/
+#include <stdbool.h>
 #endif
 
 #endif //__UTYPES_H__
