@@ -33,11 +33,6 @@ uint64 UTGetTickCount64()
 	return (uint64)GetTickCount();
 }
 
-uint32 UTP_GetMilliseconds()
-{
-	return GetTickCount();
-}
-
 void Time_Initialize()
 {
 	HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
@@ -112,7 +107,7 @@ static uint64 GetMicroseconds()
 	return ((tick - start_tick) * sTimebaseInfo.numer) / (sTimebaseInfo.denom * 1000);
 }
 
-#else
+#else //!__APPLE__
 
 /* Unfortunately, #ifdef CLOCK_MONOTONIC is not enough to make sure that
    POSIX clocks work -- we could be running a recent libc with an ancient
@@ -146,7 +141,9 @@ static uint64_t GetMicroseconds()
 		return uint64(tv.tv_sec) * 1000000 + tv.tv_usec;
 	}
 }
-#endif
+#endif //!__APPLE__
+
+#endif //!WIN32
 
 uint64 UTP_GetMicroseconds()
 {
@@ -166,8 +163,6 @@ uint32 UTP_GetMilliseconds()
 {
 	return UTP_GetMicroseconds() / 1000;
 }
-
-#endif
 
 
 #define ETHERNET_MTU 1500
