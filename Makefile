@@ -1,6 +1,6 @@
 SRCS = utp.cpp utp_utils.cpp
 OBJS = utp.o utp_utils.o
-CXXFLAGS = -fno-exceptions -fno-rtti -Wall -ansi -g
+CXXFLAGS = -fno-exceptions -fno-rtti -Wall -g
 
 all: libutp.a
 

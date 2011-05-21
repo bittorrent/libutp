@@ -10,4 +10,4 @@ utp:=../utp.cpp ../utp_utils.cpp
 cflags:=-fno-exceptions -fno-rtti
 
 utp_test: utp_test.cpp
-	g++ -Wall -ansi -o utp_test -g utp_test.cpp $(utp) -DPOSIX -I . -I .. $(libs) $(cflags)
+	g++ -Wall -o utp_test -g utp_test.cpp $(utp) -DPOSIX -I . -I .. $(libs) $(cflags)
