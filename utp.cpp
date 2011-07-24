@@ -115,7 +115,7 @@ struct PackedSockAddr {
 
 	byte get_family() const
 	{
-		return (IN6_IS_ADDR_V4MAPPED((in6_addr*)_sin6) != 0) ? AF_INET : AF_INET6;
+		return (IN6_IS_ADDR_V4MAPPED(&_in._in6addr) != 0) ? AF_INET : AF_INET6;
 	}
 
 	bool operator==(const PackedSockAddr& rhs) const
