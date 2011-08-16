@@ -43,7 +43,12 @@ template <typename T> static inline T clamp(T v, T mi, T ma)
 	return v;
 }
 
-#pragma pack(push,1)
+#ifdef __GNUC__
+ #define PACKED_ATTRIBUTE __attribute__((__packed__))
+#else
+ #define PACKED_ATTRIBUTE
+ #pragma pack(push,1)
+#endif
 
 namespace aux
 {
@@ -68,7 +73,9 @@ typedef big_endian<int32> int32_big;
 typedef big_endian<uint32> uint32_big;
 typedef big_endian<uint16> uint16_big;
 
-#pragma pack(pop)
+#ifndef __GNUC__
+ #pragma pack(pop)
+#endif
 
 template<typename T> static inline void zeromem(T *a, size_t count = 1) { memset(a, 0, count * sizeof(T)); }
 

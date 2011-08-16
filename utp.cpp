@@ -92,7 +92,12 @@ char addrbuf[65];
 char addrbuf2[65];
 #define addrfmt(x, s) x.fmt(s, sizeof(s))
 
-#pragma pack(push,1)
+#ifdef __GNUC__
+ #define PACKED_ATTRIBUTE __attribute__((__packed__))
+#else
+ #define PACKED_ATTRIBUTE
+ #pragma pack(push,1)
+#endif
 
 struct PACKED_ATTRIBUTE PackedSockAddr {
 
@@ -280,7 +285,9 @@ struct PACKED_ATTRIBUTE PacketFormatExtensionsV1 {
 	byte extensions[8];
 };
 
-#pragma pack(pop)
+#ifndef __GNUC__
+ #pragma pack(pop)
+#endif
 
 enum {
 	ST_DATA = 0,		// Data packet.
