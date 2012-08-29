@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from setuptools import setup, Library
+from setuptools import setup, Extension
 
 from utp import VERSION
 
@@ -24,7 +24,7 @@ else:
 # http://bugs.python.org/issue9023
 sources = [os.path.abspath(x) for x in sources]
 
-ext = Library(name="utp",
+ext = Extension(name="libutp",
               sources=sources,
               include_dirs=include_dirs,
               libraries=libraries,
