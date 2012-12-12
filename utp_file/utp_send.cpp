@@ -25,6 +25,7 @@
 // platform-specific includes
 #ifdef POSIX
 #include <unistd.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -66,6 +67,8 @@ typedef sockaddr_storage SOCKADDR_STORAGE;
 #include "utp_utils.h"
 
 #include "udp.h"
+
+#include "utp_conf.cpp"
 
 // These are for casting the options for getsockopt
 // and setsockopt which if incorrect can cause these
@@ -358,12 +361,21 @@ int main(int argc, char* argv[])
 	*portchr = 0;
 	portchr++;
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(dest);
-	sin.sin_port = htons(atoi(portchr));
+	addrinfo hints, *result;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	if (getaddrinfo(dest, portchr, &hints, &result) != 0) {
+		fprintf(stderr, "unable to lookup %s:%s: %s\n", dest, portchr, strerror(errno));
+		exit(1);
+	}
 
-	utp_socket = UTP_Create(&send_to, &sm, (const struct sockaddr*)&sin, sizeof(sin));
+	if (result->ai_next != NULL) {
+		fprintf(stderr, "lookup result for %s returned more than one result...only using first\n", dest);
+	}
+
+	utp_socket = UTP_Create(&send_to, &sm, result->ai_addr, sizeof(*(result->ai_addr)));
+	freeaddrinfo(result);
 	UTP_SetSockopt(utp_socket, SO_SNDBUF, 100*300);
 	printf("creating socket %p\n", utp_socket);
 
@@ -379,6 +391,16 @@ int main(int argc, char* argv[])
 
 	printf("connecting socket %p\n", utp_socket);
 	UTP_Connect(utp_socket);
+
+	UTPConf conf;
+	const char *name = "utp_send.conf";
+	UTP_GetConf(utp_socket, &conf);
+	if (parse_conf_file(name, &conf)) {
+		UTP_SetConf(utp_socket, &conf);
+	} else {
+		name = "default conf";
+	}
+	printf("%s:\n%s", name, conf_to_str("    ", &conf));
 
 	int last_sent = 0;
 	unsigned int last_time = UTP_GetMilliseconds();
