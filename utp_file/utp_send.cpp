@@ -68,8 +68,6 @@ typedef sockaddr_storage SOCKADDR_STORAGE;
 
 #include "udp.h"
 
-#include "utp_conf.cpp"
-
 // These are for casting the options for getsockopt
 // and setsockopt which if incorrect can cause these
 // calls to fail.
@@ -254,7 +252,7 @@ void UDPSocketManager::select(int microsec)
 void utp_read(void* socket, const byte* bytes, size_t count)
 {
 	assert(utp_socket == socket);
-	printf("utp on_read %u\n", count);
+	printf("utp on_read %zu\n", count);
 	assert(false);
 }
 
@@ -300,6 +298,70 @@ void utp_error(void* socket, int errcode)
 
 void utp_overhead(void *socket, bool send, size_t count, int type)
 {
+}
+
+struct sockopt_t {
+	const char * const name;
+	int option;
+};
+
+#define SOCKOPT(x) {#x, SO_UTP_##x}
+
+sockopt_t sockopts[] = {
+	SOCKOPT(CCONTROL_TARGET),
+	SOCKOPT(MAX_CWND_INCREASE_BYTES_PER_RTT),
+	SOCKOPT(MIN_WINDOW_SIZE),
+};
+
+const int num_sockopts = sizeof(sockopts) / sizeof(sockopt_t);
+
+bool set_sockopts_from_file(UTPSocket *socket, const char * const file_name)
+{
+	bool ret = false;
+
+	if (socket == NULL || file_name == NULL) return ret;
+
+	FILE *fp = fopen(file_name, "r");
+	if (fp == NULL) return ret;
+
+	char name[100];
+	int value;
+	int lineno = 0;
+	while (fscanf(fp, "%s%d\n", name, &value) == 2) {
+		++lineno;
+
+		bool found = false;
+		for (int i = 0; i < num_sockopts; ++i) {
+			if (strcmp(name, sockopts[i].name) == 0) {
+				UTP_SetSockopt(socket, sockopts[i].option, value);
+				ret = found = true;
+			}
+		}
+
+		if (!found) {
+			fprintf(stderr, "unknown option found at %s:%d: %s\n",
+				file_name, lineno, name);
+		}
+	}
+
+	fclose(fp);
+
+	return ret;
+}
+
+const char *sockopts_to_string(UTPSocket *socket)
+{
+	static char str[4096];
+
+	ssize_t n = 0;
+	int value;
+	for (int i = 0; i < num_sockopts; ++i) {
+		value = -1;
+		UTP_GetSockopt(socket, sockopts[i].option, &value);
+		n += snprintf(str+n, sizeof(str)-n, "    %s=%d\n", sockopts[i].name, value);
+	}
+
+	return str;
 }
 
 int main(int argc, char* argv[])
@@ -392,15 +454,11 @@ int main(int argc, char* argv[])
 	printf("connecting socket %p\n", utp_socket);
 	UTP_Connect(utp_socket);
 
-	UTPConf conf;
 	const char *name = "utp_send.conf";
-	UTP_GetConf(utp_socket, &conf);
-	if (parse_conf_file(name, &conf)) {
-		UTP_SetConf(utp_socket, &conf);
-	} else {
+	if (!set_sockopts_from_file(utp_socket, name)) {
 		name = "default conf";
 	}
-	printf("%s:\n%s", name, conf_to_str("    ", &conf));
+	printf("%s:\n%s", name, sockopts_to_string(utp_socket));
 
 	int last_sent = 0;
 	unsigned int last_time = UTP_GetMilliseconds();
@@ -413,7 +471,7 @@ int main(int argc, char* argv[])
 			float rate = (total_sent - last_sent) * 1000.f / (cur_time - last_time);
 			last_sent = total_sent;
 			last_time = cur_time;
-			printf("\r[%u] sent: %d/%d  %.1f bytes/s  ", cur_time, total_sent, file_size, rate);
+			printf("\r[%u] sent: %zu/%zu  %.1f bytes/s  ", cur_time, total_sent, file_size, rate);
 			fflush(stdout);
 		}
 	}

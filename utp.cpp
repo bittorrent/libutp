@@ -1542,9 +1542,9 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 		//
 		//     rejected <   accepted   > rejected 
 		// <============+--------------+============>
-		//              ^              ^
-		//              |              |
-		//        (seq_nr-wnd)         seq_nr
+		//		^	       ^
+		//		|	       |
+		//	  (seq_nr-wnd)	       seq_nr
 
 		if (((seq_nr - v - 1) & ACK_NR_MASK) >= (uint16)(cur_window_packets - 1))
 			continue;
@@ -2426,7 +2426,7 @@ bool UTP_GetSockopt(UTPSocket* conn, int opt, int* val)
 		return true;
 	}
 
-    *val = 0;
+	*val = 0;
 	return false;
 }
 
