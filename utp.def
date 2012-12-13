@@ -13,5 +13,4 @@ EXPORTS
    UTP_Close         @12
    inet_ntop         @13
    inet_pton         @14
-   UTP_GetConf       @15
-   UTP_SetConf       @16
+   UTP_GetSockopt    @15

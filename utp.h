@@ -24,23 +24,19 @@ extern "C" {
 
 struct UTPSocket;
 
-// The uTP configuration exposed for runtime changes.
-struct UTPConf
-{
-	// The target RTT expressed in milliseconds.
-	uint32 ccontrol_target;
-
-	// The number of bytes to increase the max window size.
-	uint16 max_cwnd_increase_bytes_per_rtt;
-
-	// The minimum number of bytes to allow for a window size.
-	uint16 min_window_size;
-};
-
 // Used to set sockopt on a uTP socket to set the version of uTP
 // to use for outgoing connections. This can only be called before
 // the uTP socket is connected
 #define SO_UTPVERSION 99
+
+// Used to get or set the target RTT expressed in milliseconds.
+#define SO_UTP_CCONTROL_TARGET 100
+
+// Used to get or set the number of bytes to increase the max window size.
+#define SO_UTP_MAX_CWND_INCREASE_BYTES_PER_RTT 101
+
+// Used to get or set the minimum number of bytes to allow for a window size.
+#define SO_UTP_MIN_WINDOW_SIZE 102
 
 enum {
 	// socket has reveived syn-ack (notification only for outgoing connection completion)
@@ -105,14 +101,11 @@ typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct 
 struct UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata,
 					  const struct sockaddr *addr, socklen_t addrlen);
 
-// Get or set the UTP configuration (compiled defaults are initially used).
-void UTP_GetConf(UTPSocket *socket, UTPConf *conf);
-void UTP_SetConf(UTPSocket *socket, UTPConf *conf);
-
 // Setup the callbacks - must be done before connect or on incoming connection
 void UTP_SetCallbacks(struct UTPSocket *socket, struct UTPFunctionTable *func, void *userdata);
 
 // Valid options include SO_SNDBUF, SO_RCVBUF and SO_UTPVERSION
+bool UTP_GetSockopt(struct UTPSocket *socket, int opt, int* val);
 bool UTP_SetSockopt(struct UTPSocket *socket, int opt, int val);
 
 // Try to connect to a specified host.
