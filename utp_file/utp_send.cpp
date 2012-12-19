@@ -381,6 +381,7 @@ int main(int argc, char* argv[])
 	char *dest = argv[2];
 	char *file_name = argv[3];
 
+	printf("using libutp from %s\n", UTP_GetLibraryVersion());
 	printf("logging to '%s'\n", log_file_name);
 	printf("connecting to %s\n", dest);
 	printf("sending '%s'\n", file_name);

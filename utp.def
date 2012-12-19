@@ -14,3 +14,4 @@ EXPORTS
    inet_ntop         @13
    inet_pton         @14
    UTP_GetSockopt    @15
+   UTP_GetLibraryVersion @16

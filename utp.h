@@ -168,6 +168,8 @@ struct UTPGlobalStats {
 
 void UTP_GetGlobalStats(struct UTPGlobalStats *stats);
 
+const char * const UTP_GetLibraryVersion();
+
 #ifdef __cplusplus
 }
 #endif

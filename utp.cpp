@@ -74,6 +74,7 @@ typedef sockaddr_storage SOCKADDR_STORAGE;
 
 #define DIV_ROUND_UP(num, denom) ((num + denom - 1) / denom)
 
+#include "utp_gitversion.h"
 #include "utp_utils.h"
 #include "utp_config.h"
 
@@ -2877,6 +2878,10 @@ void UTP_GetStats(UTPSocket *conn, UTPStats *stats)
 	*stats = conn->_stats;
 }
 #endif // _DEBUG
+
+const char * const UTP_GetLibraryVersion() {
+	return UTP_GITVERSION;
+}
 
 void UTP_GetGlobalStats(UTPGlobalStats *stats)
 {

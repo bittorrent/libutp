@@ -322,6 +322,7 @@ int main(int argc, char* argv[])
 	int port = atoi(argv[2]);
 	char *file_name = argv[3];
 
+	printf("using libutp from %s\n", UTP_GetLibraryVersion());
 	printf("logging to '%s'\n", log_file_name);
 	printf("listening on %d\n", port);
 	printf("saving to '%s'\n", file_name);
