@@ -7,7 +7,9 @@
 #define WSAGetLastError() errno
 #define SOCKET int
 #define INVALID_SOCKET -1
-#endif
+#else
+#define snprintf _snprintf
+#endif // WIN32
 
 struct UdpOutgoing {
 	SOCKADDR_STORAGE to;

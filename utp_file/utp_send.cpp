@@ -353,7 +353,7 @@ const char *sockopts_to_string(UTPSocket *socket)
 {
 	static char str[4096];
 
-	ssize_t n = 0;
+	size_t n = 0;
 	int value;
 	for (int i = 0; i < num_sockopts; ++i) {
 		value = -1;
@@ -401,9 +401,9 @@ int main(int argc, char* argv[])
 	// ow
 	WSADATA wsa;
 	BYTE byMajorVersion = 2, byMinorVersion = 2;
-	int result = WSAStartup(MAKEWORD(byMajorVersion, byMinorVersion), &wsa);
-	if (result != 0 || LOBYTE(wsa.wVersion) != byMajorVersion || HIBYTE(wsa.wVersion) != byMinorVersion ) {
-		if (result == 0) WSACleanup();
+	int r = WSAStartup(MAKEWORD(byMajorVersion, byMinorVersion), &wsa);
+	if (r != 0 || LOBYTE(wsa.wVersion) != byMajorVersion || HIBYTE(wsa.wVersion) != byMinorVersion ) {
+		if (r == 0) WSACleanup();
 		return -1;
 	}
 #endif
