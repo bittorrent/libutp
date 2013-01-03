@@ -38,6 +38,9 @@ struct UTPSocket;
 // Used to get or set the minimum number of bytes to allow for a window size.
 #define SO_UTP_MIN_WINDOW_SIZE 102
 
+// Used to set the connection timeout.
+#define SO_CONTIMEO 103
+
 enum {
 	// socket has reveived syn-ack (notification only for outgoing connection completion)
 	// this implies writability
