@@ -4,15 +4,15 @@ CXXFLAGS = -fno-exceptions -fno-rtti -Wall -g
 
 all: libutp.a
 
-libutp.a: utp_gitversion.h $(OBJS)
+libutp.a: .gitversion $(OBJS)
 	-rm -f libutp.a
 	ar q libutp.a $(OBJS)
 	ranlib libutp.a
 
 .cpp.o:
-	g++ -c -DPOSIX -I . -I utp_config_lib $(CXXFLAGS) $<
+	g++ -c -DPOSIX -DGITVERSION="\"$$(cat .gitversion)\"" -I . -I utp_config_lib $(CXXFLAGS) $<
 
-utp_gitversion.h: $(SRCS)
+.gitversion: $(SRCS)
 	@ver='tarball'; \
 	if test -d $(CURDIR)/.git; then \
 	  export LANG=C; \
@@ -24,7 +24,8 @@ utp_gitversion.h: $(SRCS)
 	    ver="$$branch/$$version"; \
 	  fi; \
 	fi; \
-	echo "#define UTP_GITVERSION \"$${ver}\"" > $@
+	echo "$${ver} >$@"; \
+	echo "$${ver}" >$@
 
 .PHONY: clean
 
