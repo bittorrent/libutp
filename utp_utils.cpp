@@ -161,7 +161,7 @@ uint64 UTP_GetMicroseconds()
 
 uint32 UTP_GetMilliseconds()
 {
-	return UTP_GetMicroseconds() / 1000;
+	return (uint32)(UTP_GetMicroseconds() / 1000);
 }
 
 

@@ -1226,7 +1226,7 @@ void UTPSocket::update_send_quota()
 	if (dt == 0) return;
 	last_send_quota = g_current_ms;
 	size_t add = max_window * dt * 100 / (rtt_hist.delay_base?rtt_hist.delay_base:50);
-	if (add > max_window * 100 && add > max_cwnd_increase_bytes_per_rtt * 100) add = max_window;
+	if (add > max_window * 100 && add > (size_t)max_cwnd_increase_bytes_per_rtt * 100) add = max_window;
 	send_quota += (int32)add;
 //	LOG_UTPV("0x%08x: UTPSocket::update_send_quota dt:%d rtt:%u max_window:%u quota:%d",
 //			 this, dt, rtt, (uint)max_window, send_quota / 100);
@@ -1991,7 +1991,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 	// if the delay estimate exceeds the RTT, adjust the base_delay to
 	// compensate
 	if (conn->our_hist.get_value() > uint32(min_rtt)) {
-		conn->our_hist.shift(conn->our_hist.get_value() - min_rtt);
+		conn->our_hist.shift(conn->our_hist.get_value() - uint32(min_rtt));
 	}
 
 	// only apply the congestion controller on acks
