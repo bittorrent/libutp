@@ -439,7 +439,7 @@ int main(int argc, char* argv[])
 
 	utp_socket = UTP_Create(&send_to, &sm, result->ai_addr, sizeof(*(result->ai_addr)));
 	freeaddrinfo(result);
-	UTP_SetSockopt(utp_socket, SO_SNDBUF, 100*300);
+
 	printf("creating socket %p\n", utp_socket);
 
 	UTPFunctionTable utp_callbacks = {
