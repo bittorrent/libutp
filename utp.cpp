@@ -2413,10 +2413,12 @@ bool UTP_GetSockopt(UTPSocket* conn, int opt, int* val)
 
 	switch (opt) {
 	case SO_SNDBUF:
-		*val = conn->opt_sndbuf;
+		assert(conn->opt_sndbuf <= INT_MAX);
+		*val = (int)conn->opt_sndbuf;
 		return true;
 	case SO_RCVBUF:
-		*val = conn->opt_rcvbuf;
+		assert(conn->opt_rcvbuf <= INT_MAX);
+		*val = (int)conn->opt_rcvbuf;
 		return true;
 	case SO_UTPVERSION:
 		*val = conn->version;
@@ -2449,12 +2451,14 @@ bool UTP_SetSockopt(UTPSocket* conn, int opt, int val)
 	switch (opt) {
 	case SO_SNDBUF:
 		assert(val >= 1);
-		conn->opt_sndbuf = val;
+		conn->opt_sndbuf = (size_t)val;
 		return true;
 	case SO_RCVBUF:
-		conn->opt_rcvbuf = val;
+		assert(val >= 0);
+		conn->opt_rcvbuf = (size_t)val;
 		return true;
 	case SO_UTPVERSION:
+		assert(val >= 0 && val <= 1);
 		assert(conn->state == CS_IDLE);
 		if (conn->state != CS_IDLE) {
 			// too late
@@ -2484,9 +2488,11 @@ bool UTP_SetSockopt(UTPSocket* conn, int opt, int val)
 		conn->min_window_size = val;
 		return true;
 	case SO_SNDTIMEO:
+		assert(val >= 0);
 		conn->send_timeout = val;
 		return true;
 	case SO_CONTIMEO:
+		assert(val >= 0);
 		conn->connect_timeout = val;
 		return true;
 	}
