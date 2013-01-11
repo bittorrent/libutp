@@ -143,6 +143,19 @@ public:
 		count = 0;
 	}
 
+	bool inline RemoveFirst() {
+		if (count == 0) {
+			return false;
+		}
+
+		count--;
+		if (count > 0) {
+			memmove(&mem[0], &mem[1], count * sizeof(T));
+		}
+
+		return true;
+	}
+
 	bool inline MoveUpLast(size_t index) {
 		assert(index < count);
 		size_t c = --count;
