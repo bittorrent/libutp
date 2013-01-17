@@ -658,6 +658,8 @@ struct UTPSocket {
 	uint send_timeout;
 	// the client specified connect timeout value
 	uint connect_timeout;
+	// the client specified shut down timeout value
+	uint shut_down_timeout;
 
 	// When the window size is set to zero, start this timer. It will send a new packet every 30secs.
 	uint32 zerowindow_time;
@@ -1308,8 +1310,9 @@ void UTPSocket::check_timeouts()
 
 			// Increase RTO
 			const uint new_timeout = retransmit_timeout * 2;
-			if ((send_timeout > 0 && new_timeout >= send_timeout) || 
-				(state == CS_SYN_SENT && connect_timeout > 0 && new_timeout > connect_timeout)) {
+			if ((send_timeout > 0 && new_timeout >= send_timeout) ||
+				(state == CS_SYN_SENT && connect_timeout > 0 && new_timeout > connect_timeout) ||
+				(state == CS_FIN_SENT && shut_down_timeout > 0 && new_timeout > shut_down_timeout)) {
 				// more than 'send_timeout' milliseconds with no reply. kill it.
 				// if we haven't even connected yet, give up sooner. 'connect_timeout' milliseconds
 				// means 2 tries at the following timeouts: 'connect_timeout / 2', then 'connect_timeout' milliseconds
@@ -2438,6 +2441,9 @@ bool UTP_GetSockopt(UTPSocket* conn, int opt, int* val)
 	case SO_CONTIMEO:
 		*val = conn->connect_timeout;
 		return true;
+	case SO_SHUTDOWNTIMEO:
+		*val = conn->shut_down_timeout;
+		return true;
 	}
 
 	*val = 0;
@@ -2494,6 +2500,10 @@ bool UTP_SetSockopt(UTPSocket* conn, int opt, int val)
 	case SO_CONTIMEO:
 		assert(val >= 0);
 		conn->connect_timeout = val;
+		return true;
+	case SO_SHUTDOWNTIMEO:
+		assert(val >= 0);
+		conn->shut_down_timeout = val;
 		return true;
 	}
 
