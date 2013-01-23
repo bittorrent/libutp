@@ -2894,7 +2894,7 @@ void UTP_GetPeerName(UTPSocket *conn, struct sockaddr *addr, socklen_t *addrlen)
 	memcpy(addr, &sa, *addrlen);
 }
 
-void UTP_GetDelays(UTPSocket *conn, int32 *ours, int32 *theirs, uint32 *age)
+void UTP_GetDelays(UTPSocket *conn, uint32 *ours, uint32 *theirs, uint32 *age)
 {
 	assert(conn);
 

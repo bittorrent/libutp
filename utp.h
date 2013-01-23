@@ -142,7 +142,7 @@ void UTP_CheckTimeouts(void);
 // address in the object pointed to by the addrlen argument.
 void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t *addrlen);
 
-void UTP_GetDelays(struct UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
+void UTP_GetDelays(struct UTPSocket *socket, uint32 *ours, uint32 *theirs, uint32 *age);
 
 size_t UTP_GetPacketSize(struct UTPSocket *socket);
 
