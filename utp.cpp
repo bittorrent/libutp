@@ -715,7 +715,7 @@ struct UTPSocket {
 	// XXX this breaks when spaced by > INT_MAX/2, which is 49
 	// days; the failure mode in that case is we do an extra decay
 	// or fail to do one when we really shouldn't.
-	bool can_decay_win(int32 msec) const
+	bool can_decay_win(uint32 msec) const
 	{
 		return msec - last_rwin_decay >= MAX_WINDOW_DECAY;
 	}
