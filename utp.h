@@ -144,6 +144,8 @@ void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t 
 
 void UTP_GetDelays(struct UTPSocket *socket, uint32 *ours, uint32 *theirs, uint32 *age);
 
+void UTP_GetCongestionIndicators(struct UTPSocket *socket, uint32 *decay_age, uint32 *old_packet_count);
+
 size_t UTP_GetPacketSize(struct UTPSocket *socket);
 
 #ifdef _DEBUG

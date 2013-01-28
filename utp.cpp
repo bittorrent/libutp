@@ -592,7 +592,7 @@ struct UTPSocket {
 	byte version;
 	CONN_STATE state;
 	// TickCount when we last decayed window (wraps)
-	int32 last_rwin_decay;
+	uint32 last_rwin_decay;
 
 	// the sequence number of the FIN packet. This field is only set
 	// when we have received a FIN, and the flag field has the FIN flag set.
@@ -619,6 +619,10 @@ struct UTPSocket {
 	// the time when we need to send another ack. If there's
 	// nothing to ack, this is a very large number
 	uint32 ack_time;
+
+	// The number of times an old packet/ack was received and ignored
+	// (i.e. the peer resent something already ack'd).
+	uint32 old_packet_count;
 
 	uint32 last_got_packet;
 	uint32 last_sent_packet;
@@ -1878,6 +1882,7 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 			conn->ack_time = g_current_ms + min<uint>(conn->ack_time - g_current_ms, DELAYED_ACK_TIME_THRESHOLD);
 		}
 		LOG_UTPV("    Got old Packet/Ack (%u/%u)=%u!", pk_seq_nr, conn->ack_nr, seqnr);
+		conn->old_packet_count++;
 		return 0;
 	}
 
@@ -2366,7 +2371,7 @@ UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata, const st
 	conn->last_got_packet = g_current_ms;
 	conn->last_sent_packet = g_current_ms;
 	conn->last_measured_delay = g_current_ms + 0x70000000;
-	conn->last_rwin_decay = int32(g_current_ms) - MAX_WINDOW_DECAY;
+	conn->last_rwin_decay = g_current_ms - MAX_WINDOW_DECAY;
 	conn->last_send_quota = g_current_ms;
 	conn->send_quota = PACKET_SIZE * 100;
 	conn->cur_window_packets = 0;
@@ -2901,6 +2906,12 @@ void UTP_GetDelays(UTPSocket *conn, uint32 *ours, uint32 *theirs, uint32 *age)
 	if (ours) *ours = conn->our_hist.get_value();
 	if (theirs) *theirs = conn->their_hist.get_value();
 	if (age) *age = g_current_ms - conn->last_measured_delay;
+}
+
+void UTP_GetCongestionIndicators(UTPSocket *conn, uint32 *decay_age, uint32 *old_packet_count)
+{
+	if (decay_age) *decay_age = g_current_ms - conn->last_rwin_decay;
+	if (old_packet_count) *old_packet_count = conn->old_packet_count;
 }
 
 #ifdef _DEBUG
