@@ -41,9 +41,6 @@ struct UTPSocket;
 // Used to set the connection timeout.
 #define SO_CONTIMEO 103
 
-// Used to set the shut down timeout.
-#define SO_SHUTDOWNTIMEO 104
-
 enum {
 	// socket has reveived syn-ack (notification only for outgoing connection completion)
 	// this implies writability
