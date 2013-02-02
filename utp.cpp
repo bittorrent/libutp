@@ -685,6 +685,8 @@ struct UTPSocket {
 
 	// The target RTT expressed in milliseconds.
 	uint32 ccontrol_target;
+	// Last time the target RTT was exceeded.
+	uint32 last_ccontrol_target_exceeded;
 
 	// The number of bytes to increase the max window size.
 	uint16 max_cwnd_increase_bytes_per_rtt;
@@ -1697,6 +1699,11 @@ void UTPSocket::apply_ledbat_ccontrol(size_t bytes_acked, uint32 actual_delay, i
 		scaled_gain = 0;
 	}
 
+	if (off_target < 0)
+	{
+		last_ccontrol_target_exceeded = g_current_ms;
+	}
+
 	if (scaled_gain + max_window < min_window_size) {
 		max_window = min_window_size;
 	} else {
@@ -2197,20 +2204,20 @@ size_t UTP_ProcessIncoming(UTPSocket *conn, const byte *packet, size_t len, bool
 
 			// Check if there are additional buffers in the reorder buffers
 			// that need delivery.
-			byte *p = (byte*)conn->inbuf.get(conn->ack_nr+1);
-			if (p == NULL)
+			byte *pb = (byte*)conn->inbuf.get(conn->ack_nr+1);
+			if (pb == NULL)
 				break;
 			conn->inbuf.put(conn->ack_nr+1, NULL);
-			count = *(uint*)p;
+			count = *(uint*)pb;
 			if (count > 0 && conn->state != CS_FIN_SENT) {
 				// Pass the bytes to the upper layer
-				conn->func.on_read(conn->userdata, p + sizeof(uint), count);
+				conn->func.on_read(conn->userdata, pb + sizeof(uint), count);
 			}
 			conn->ack_nr++;
 			conn->bytes_since_ack += count;
 
 			// Free the element from the reorder buffer
-			free(p);
+			free(pb);
 			assert(conn->reorder_count > 0);
 			conn->reorder_count--;
 		}
@@ -2877,9 +2884,10 @@ void UTP_GetDelays(UTPSocket *conn, uint32 *ours, uint32 *theirs, uint32 *age)
 	if (age) *age = g_current_ms - conn->last_measured_delay;
 }
 
-void UTP_GetCongestionIndicators(UTPSocket *conn, uint32 *decay_age, uint32 *old_packet_count)
+void UTP_GetCongestionIndicators(UTPSocket *conn, uint32 *decay_age, uint32 *target_exceeded_age, uint32 *old_packet_count)
 {
 	if (decay_age) *decay_age = g_current_ms - conn->last_rwin_decay;
+	if (target_exceeded_age) *target_exceeded_age = g_current_ms - conn->last_ccontrol_target_exceeded;
 	if (old_packet_count) *old_packet_count = conn->old_packet_count;
 }
 
