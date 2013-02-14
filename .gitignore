@@ -1,0 +1,9 @@
+libutp.a
+pyutp/build/
+pyutp/dist/
+pyutp/utp.egg-info/
+pyutp/utp/__init__.pyc
+tests/tests
+tests/tests.dSYM/
+utp.o
+utp_utils.o
