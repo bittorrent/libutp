@@ -130,6 +130,15 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	}
 	bool operator!=(const PackedSockAddr& rhs) const { return !(*this == rhs); }
 
+	PackedSockAddr()
+	{
+		_in._in6d[0] = 0;
+		_in._in6d[1] = 0;
+		_in._in6d[2] = 0;
+		_in._in6d[3] = 0;
+		_port = 0;
+	}
+
 	PackedSockAddr(const SOCKADDR_STORAGE* sa, socklen_t len)
 	{
 		if (sa->ss_family == AF_INET) {
@@ -786,7 +795,7 @@ struct UTPSocket {
 
 	bool flush_packets();
 
-	void write_outgoing_packet(size_t payload, uint flags);
+	void write_outgoing_packet(size_t payload, byte flags);
 
 	void update_send_quota();
 
@@ -902,7 +911,7 @@ void UTPSocket::send_ack(bool synack)
 		pfa1.pf.set_version(1);
 		pfa1.pf.set_type(ST_STATE);
 		pfa1.pf.ext = 0;
-		pfa1.pf.connid = conn_id_send;
+		pfa1.pf.connid = (uint16)conn_id_send;
 		pfa1.pf.ack_nr = ack_nr;
 		pfa1.pf.seq_nr = seq_nr;
 		pfa1.pf.windowsize = (uint32)last_rcv_win;
@@ -1006,7 +1015,7 @@ void UTPSocket::send_rst(SendToProc *send_to_proc, void *send_to_userdata,
 		pf1.set_version(1);
 		pf1.set_type(ST_RESET);
 		pf1.ext = 0;
-		pf1.connid = conn_id_send;
+		pf1.connid = (uint16)conn_id_send;
 		pf1.ack_nr = ack_nr;
 		pf1.seq_nr = seq_nr;
 		pf1.windowsize = 0;
@@ -1131,7 +1140,7 @@ bool UTPSocket::flush_packets()
 	return false;
 }
 
-void UTPSocket::write_outgoing_packet(size_t payload, uint flags)
+void UTPSocket::write_outgoing_packet(size_t payload, byte flags)
 {
 	// Setup initial timeout timer
 	if (cur_window_packets == 0) {
@@ -1200,7 +1209,7 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags)
 			p1->set_version(1);
 			p1->set_type(flags);
 			p1->ext = 0;
-			p1->connid = conn_id_send;
+			p1->connid = (uint16)conn_id_send;
 			p1->windowsize = (uint32)last_rcv_win;
 			p1->ack_nr = ack_nr;
 		}
@@ -1577,7 +1586,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 		if (bit_set) {
 			// the selective ack should never ACK the packet we're waiting for to decrement cur_window_packets
 			assert((v & outbuf.mask) != ((seq_nr - cur_window_packets) & outbuf.mask));
-			ack_packet(v);
+			ack_packet((uint16)v);
 			continue;
 		}
 
@@ -1636,7 +1645,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 		++_stats._rexmit;
 #endif
 		send_packet(pkt);
-		fast_resend_seq_nr = v + 1;
+		fast_resend_seq_nr = (uint16)(v + 1);
 
 		// Re-send max 4 packets.
 		if (++i >= 4) break;
@@ -1645,7 +1654,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 	if (back_off)
 		maybe_decay_win();
 
-	duplicate_ack = count;
+	duplicate_ack = (byte)count;
 }
 
 void UTPSocket::apply_ledbat_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 min_rtt)
@@ -2479,19 +2488,19 @@ bool UTP_SetSockopt(UTPSocket* conn, int opt, int val)
 			conn->opt_rcvbuf = 3 * 1024 * 1024 + 512 * 1024;
 			conn->opt_sndbuf = conn->opt_rcvbuf;
 		}
-		conn->version = val;
+		conn->version = (byte)val;
 		return true;
 	case SO_UTP_CCONTROL_TARGET:
 		assert(val > 0);
-		conn->ccontrol_target = val;
+		conn->ccontrol_target = (uint32)val;
 		return true;
 	case SO_UTP_MAX_CWND_INCREASE_BYTES_PER_RTT:
 		assert(val > 0);
-		conn->max_cwnd_increase_bytes_per_rtt = val;
+		conn->max_cwnd_increase_bytes_per_rtt = (uint16)val;
 		return true;
 	case SO_UTP_MIN_WINDOW_SIZE:
 		assert(val > 0);
-		conn->min_window_size = val;
+		conn->min_window_size = (uint16)val;
 		return true;
 	}
 
@@ -2539,7 +2548,7 @@ void UTP_Connect(UTPSocket *conn)
 	conn->conn_id_send = conn_seed+1;
 	// if you need compatibiltiy with 1.8.1, use this. it increases attackability though.
 	//conn->seq_nr = 1;
-	conn->seq_nr = UTP_Random();
+	conn->seq_nr = (uint16)UTP_Random();
 
 	// Create the connect packet.
 	const size_t header_ext_size = conn->get_header_extensions_size();
@@ -2565,7 +2574,7 @@ void UTP_Connect(UTPSocket *conn)
 		p1->pf.set_version(1);
 		p1->pf.set_type(ST_SYN);
 		p1->pf.ext = 2;
-		p1->pf.connid = conn->conn_id_recv;
+		p1->pf.connid = (uint16)conn->conn_id_recv;
 		p1->pf.windowsize = (uint32)conn->last_rcv_win;
 		p1->pf.seq_nr = conn->seq_nr;
 		p1->ext_next = 0;
@@ -2668,7 +2677,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		return true;
 	}
 
-	const uint32 seq_nr = version == 0 ? pf->seq_nr : pf1->seq_nr;
+	const uint16 seq_nr = version == 0 ? pf->seq_nr : pf1->seq_nr;
 	if (flags != ST_SYN) {
 		for (size_t i = 0; i < g_rst_info.GetCount(); i++) {
 			if (g_rst_info[i].connid != id)
@@ -2692,7 +2701,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		r.ack_nr = seq_nr;
 		r.timestamp = UTP_GetMilliseconds();
 
-		UTPSocket::send_rst(send_to_proc, send_to_userdata, addr, id, seq_nr, UTP_Random(), version);
+		UTPSocket::send_rst(send_to_proc, send_to_userdata, addr, id, seq_nr, (uint16)UTP_Random(), version);
 		return true;
 	}
 
@@ -2708,7 +2717,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 		// This is value that identifies this connection for us.
 		conn->conn_id_recv = id+1;
 		conn->ack_nr = seq_nr;
-		conn->seq_nr = UTP_Random();
+		conn->seq_nr = (uint16)UTP_Random();
 		conn->fast_resend_seq_nr = conn->seq_nr;
 
 		UTP_SetSockopt(conn, SO_UTPVERSION, version);
