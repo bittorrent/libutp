@@ -2636,6 +2636,7 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 	}
 
 	const byte flags = version == 0 ? pf->flags : pf1->type();
+	UTPSocket *incoming_conn = NULL;
 
 	for (size_t i = 0; i < g_utp_sockets.GetCount(); i++) {
 		UTPSocket *conn = g_utp_sockets[i];
@@ -2669,6 +2670,9 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 					header_overhead);
 			}
 			return true;
+		} else if (flags == ST_SYN && conn->conn_id_send == id) {
+			LOG_UTPV("0x%08x: recv processing duplicate SYN", conn);
+			incoming_conn = conn;
 		}
 	}
 
@@ -2708,27 +2712,32 @@ bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
 	if (incoming_proc) {
 		LOG_UTPV("Incoming connection from %s uTP version:%u", addrfmt(addr, addrbuf), version);
 
-		// Create a new UTP socket to handle this new connection
-		UTPSocket *conn = UTP_Create(send_to_proc, send_to_userdata, to, tolen);
-		// Need to track this value to be able to detect duplicate CONNECTs
-		conn->conn_seed = id;
-		// This is value that identifies this connection for them.
-		conn->conn_id_send = id;
-		// This is value that identifies this connection for us.
-		conn->conn_id_recv = id+1;
-		conn->ack_nr = seq_nr;
-		conn->seq_nr = (uint16)UTP_Random();
-		conn->fast_resend_seq_nr = conn->seq_nr;
+		UTPSocket *conn = incoming_conn;
+		if (conn == NULL) {
+			// Create a new UTP socket to handle this new connection
+			conn = UTP_Create(send_to_proc, send_to_userdata, to, tolen);
+			// Need to track this value to be able to detect duplicate CONNECTs
+			conn->conn_seed = id;
+			// This is value that identifies this connection for them.
+			conn->conn_id_send = id;
+			// This is value that identifies this connection for us.
+			conn->conn_id_recv = id+1;
+			conn->ack_nr = seq_nr;
+			conn->seq_nr = (uint16)UTP_Random();
+			conn->fast_resend_seq_nr = conn->seq_nr;
 
-		UTP_SetSockopt(conn, SO_UTPVERSION, version);
-		conn->state = CS_CONNECTED;
+			UTP_SetSockopt(conn, SO_UTPVERSION, version);
+			conn->state = CS_CONNECTED;
+		}
 
 		const size_t read = UTP_ProcessIncoming(conn, buffer, len, true);
 
 		LOG_UTPV("0x%08x: recv send connect ACK", conn);
 		conn->send_ack(true);
 
-		incoming_proc(send_to_userdata, conn);
+		// only report to the application once
+		if (incoming_conn == NULL)
+			incoming_proc(send_to_userdata, conn);
 
 		// we report overhead after incoming_proc, because the callbacks are setup now
 		if (conn->userdata) {
