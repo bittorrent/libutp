@@ -9,7 +9,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
-#include <ws2tcpip.h>
+#include "win32_ws2tcpip.h"
 
 typedef ULONGLONG (WINAPI GetTickCount64Proc)(void);
 static GetTickCount64Proc *pt2GetTickCount64;
@@ -36,6 +36,12 @@ uint64 UTGetTickCount64()
 void Time_Initialize()
 {
 	HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
+	if (kernel32 == NULL)
+	{
+		assert(false);
+		return;
+	}
+
 	pt2GetTickCount64 = (GetTickCount64Proc*)GetProcAddress(kernel32, "GetTickCount64");
 	// not a typo. GetTickCount actually returns 64 bits
 	pt2RealGetTickCount = (GetTickCount64Proc*)GetProcAddress(kernel32, "GetTickCount");
@@ -161,7 +167,7 @@ uint64 UTP_GetMicroseconds()
 
 uint32 UTP_GetMilliseconds()
 {
-	return UTP_GetMicroseconds() / 1000;
+	return (uint32)(UTP_GetMicroseconds() / 1000);
 }
 
 

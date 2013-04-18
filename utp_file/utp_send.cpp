@@ -25,6 +25,7 @@
 // platform-specific includes
 #ifdef POSIX
 #include <unistd.h>
+#include <netdb.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -251,7 +252,7 @@ void UDPSocketManager::select(int microsec)
 void utp_read(void* socket, const byte* bytes, size_t count)
 {
 	assert(utp_socket == socket);
-	printf("utp on_read %u\n", count);
+	printf("utp on_read %zu\n", count);
 	assert(false);
 }
 
@@ -299,6 +300,70 @@ void utp_overhead(void *socket, bool send, size_t count, int type)
 {
 }
 
+struct sockopt_t {
+	const char * const name;
+	int option;
+};
+
+#define SOCKOPT(x) {#x, SO_UTP_##x}
+
+sockopt_t sockopts[] = {
+	SOCKOPT(CCONTROL_TARGET),
+	SOCKOPT(MAX_CWND_INCREASE_BYTES_PER_RTT),
+	SOCKOPT(MIN_WINDOW_SIZE),
+};
+
+const int num_sockopts = sizeof(sockopts) / sizeof(sockopt_t);
+
+bool set_sockopts_from_file(UTPSocket *socket, const char * const file_name)
+{
+	bool ret = false;
+
+	if (socket == NULL || file_name == NULL) return ret;
+
+	FILE *fp = fopen(file_name, "r");
+	if (fp == NULL) return ret;
+
+	char name[100];
+	int value;
+	int lineno = 0;
+	while (fscanf(fp, "%s%d\n", name, &value) == 2) {
+		++lineno;
+
+		bool found = false;
+		for (int i = 0; i < num_sockopts; ++i) {
+			if (strcmp(name, sockopts[i].name) == 0) {
+				UTP_SetSockopt(socket, sockopts[i].option, value);
+				ret = found = true;
+			}
+		}
+
+		if (!found) {
+			fprintf(stderr, "unknown option found at %s:%d: %s\n",
+				file_name, lineno, name);
+		}
+	}
+
+	fclose(fp);
+
+	return ret;
+}
+
+const char *sockopts_to_string(UTPSocket *socket)
+{
+	static char str[4096];
+
+	size_t n = 0;
+	int value;
+	for (int i = 0; i < num_sockopts; ++i) {
+		value = -1;
+		UTP_GetSockopt(socket, sockopts[i].option, &value);
+		n += snprintf(str+n, sizeof(str)-n, "    %s=%d\n", sockopts[i].name, value);
+	}
+
+	return str;
+}
+
 int main(int argc, char* argv[])
 {
 	int port = 0;
@@ -316,6 +381,7 @@ int main(int argc, char* argv[])
 	char *dest = argv[2];
 	char *file_name = argv[3];
 
+	printf("using libutp from %s\n", UTP_GetLibraryVersion());
 	printf("logging to '%s'\n", log_file_name);
 	printf("connecting to %s\n", dest);
 	printf("sending '%s'\n", file_name);
@@ -335,9 +401,9 @@ int main(int argc, char* argv[])
 	// ow
 	WSADATA wsa;
 	BYTE byMajorVersion = 2, byMinorVersion = 2;
-	int result = WSAStartup(MAKEWORD(byMajorVersion, byMinorVersion), &wsa);
-	if (result != 0 || LOBYTE(wsa.wVersion) != byMajorVersion || HIBYTE(wsa.wVersion) != byMinorVersion ) {
-		if (result == 0) WSACleanup();
+	int r = WSAStartup(MAKEWORD(byMajorVersion, byMinorVersion), &wsa);
+	if (r != 0 || LOBYTE(wsa.wVersion) != byMajorVersion || HIBYTE(wsa.wVersion) != byMinorVersion ) {
+		if (r == 0) WSACleanup();
 		return -1;
 	}
 #endif
@@ -358,13 +424,22 @@ int main(int argc, char* argv[])
 	*portchr = 0;
 	portchr++;
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(dest);
-	sin.sin_port = htons(atoi(portchr));
+	addrinfo hints, *result;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	if (getaddrinfo(dest, portchr, &hints, &result) != 0) {
+		fprintf(stderr, "unable to lookup %s:%s: %s\n", dest, portchr, strerror(errno));
+		exit(1);
+	}
 
-	utp_socket = UTP_Create(&send_to, &sm, (const struct sockaddr*)&sin, sizeof(sin));
-	UTP_SetSockopt(utp_socket, SO_SNDBUF, 100*300);
+	if (result->ai_next != NULL) {
+		fprintf(stderr, "lookup result for %s returned more than one result...only using first\n", dest);
+	}
+
+	utp_socket = UTP_Create(&send_to, &sm, result->ai_addr, sizeof(*(result->ai_addr)));
+	freeaddrinfo(result);
+
 	printf("creating socket %p\n", utp_socket);
 
 	UTPFunctionTable utp_callbacks = {
@@ -380,6 +455,12 @@ int main(int argc, char* argv[])
 	printf("connecting socket %p\n", utp_socket);
 	UTP_Connect(utp_socket);
 
+	const char *name = "utp_send.conf";
+	if (!set_sockopts_from_file(utp_socket, name)) {
+		name = "default conf";
+	}
+	printf("%s:\n%s", name, sockopts_to_string(utp_socket));
+
 	int last_sent = 0;
 	unsigned int last_time = UTP_GetMilliseconds();
 
@@ -391,7 +472,7 @@ int main(int argc, char* argv[])
 			float rate = (total_sent - last_sent) * 1000.f / (cur_time - last_time);
 			last_sent = total_sent;
 			last_time = cur_time;
-			printf("\r[%u] sent: %d/%d  %.1f bytes/s  ", cur_time, total_sent, file_size, rate);
+			printf("\r[%u] sent: %zu/%zu  %.1f bytes/s  ", cur_time, total_sent, file_size, rate);
 			fflush(stdout);
 		}
 	}

@@ -204,7 +204,7 @@ void utp_read(void* socket, const byte* bytes, size_t count)
 void utp_write(void* socket, byte* bytes, size_t count)
 {
 	assert(utp_socket == socket);
-	printf("utp on_write %u\n", count);
+	printf("utp on_write %zu\n", count);
 	assert(false);
 }
 
@@ -322,6 +322,7 @@ int main(int argc, char* argv[])
 	int port = atoi(argv[2]);
 	char *file_name = argv[3];
 
+	printf("using libutp from %s\n", UTP_GetLibraryVersion());
 	printf("logging to '%s'\n", log_file_name);
 	printf("listening on %d\n", port);
 	printf("saving to '%s'\n", file_name);
@@ -364,12 +365,12 @@ int main(int argc, char* argv[])
 			float rate = (total_recv - last_recv) * 1000.f / (cur_time - last_time);
 			last_recv = total_recv;
 			last_time = cur_time;
-			printf("\r[%u] recv: %d  %.1f bytes/s  ", cur_time, total_recv, rate);
+			printf("\r[%u] recv: %zu  %.1f bytes/s  ", cur_time, total_recv, rate);
 			fflush(stdout);
 		}
 	}
 
-	printf("\nreceived: %d bytes\n", total_recv);
+	printf("\nreceived: %zu bytes\n", total_recv);
 	fclose(file);
 	fclose(log_file);
 }

@@ -8,7 +8,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
-#include <ws2tcpip.h>
+#include "win32_ws2tcpip.h"
 #pragma comment(lib,"ws2_32.lib")
 #else
 #include <stdlib.h>
@@ -28,6 +28,15 @@ struct UTPSocket;
 // to use for outgoing connections. This can only be called before
 // the uTP socket is connected
 #define SO_UTPVERSION 99
+
+// Used to get or set the target RTT expressed in milliseconds.
+#define SO_UTP_CCONTROL_TARGET 100
+
+// Used to get or set the number of bytes to increase the max window size.
+#define SO_UTP_MAX_CWND_INCREASE_BYTES_PER_RTT 101
+
+// Used to get or set the minimum number of bytes to allow for a window size.
+#define SO_UTP_MIN_WINDOW_SIZE 102
 
 enum {
 	// socket has reveived syn-ack (notification only for outgoing connection completion)
@@ -96,6 +105,7 @@ struct UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata,
 void UTP_SetCallbacks(struct UTPSocket *socket, struct UTPFunctionTable *func, void *userdata);
 
 // Valid options include SO_SNDBUF, SO_RCVBUF and SO_UTPVERSION
+bool UTP_GetSockopt(struct UTPSocket *socket, int opt, int* val);
 bool UTP_SetSockopt(struct UTPSocket *socket, int opt, int val);
 
 // Try to connect to a specified host.
@@ -126,7 +136,9 @@ void UTP_CheckTimeouts(void);
 // address in the object pointed to by the addrlen argument.
 void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t *addrlen);
 
-void UTP_GetDelays(struct UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
+void UTP_GetDelays(struct UTPSocket *socket, uint32 *ours, uint32 *theirs, uint32 *age);
+
+void UTP_GetCongestionIndicators(UTPSocket *conn, uint32 *decay_age, uint32 *target_exceeded_age, uint32 *old_packet_count);
 
 size_t UTP_GetPacketSize(struct UTPSocket *socket);
 
@@ -157,6 +169,8 @@ struct UTPGlobalStats {
 };
 
 void UTP_GetGlobalStats(struct UTPGlobalStats *stats);
+
+const char * const UTP_GetLibraryVersion();
 
 #ifdef __cplusplus
 }
