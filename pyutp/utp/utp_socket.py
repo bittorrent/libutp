@@ -22,6 +22,8 @@ DESTROYING = UTP_STATE_DESTROYING
 
 CheckTimeouts = utp.UTP_CheckTimeouts
 
+# Set appropriate return types.
+utp.UTP_Create.restype = ctypes.c_void_p
 
 def to_sockaddr(ip, port):
     if ":" not in ip:
@@ -53,7 +55,7 @@ def from_lpsockaddr(sa, salen):
         ip = inet_ntop(socket.AF_INET6, sin6.sin6_addr.Byte)
         port = socket.ntohs(sin6.sin6_port)
     else:
-        raise ValueError("unknown address family " + str(sa.contents.family))
+        raise ValueError("unknown address family " + str(sa.contents.ss_family))
     return (ip, port)
 
 def wrap_send_to(f):
@@ -71,7 +73,10 @@ def wrap_callback(f):
 class Socket(object):
 
     def set_socket(self, utp_socket, send_to_proc):
-        self.utp_socket = utp_socket
+        # Store this as a void pointer to prevent ctypes from assuming
+        # it's a 32 bit integer. Causes problems on 64 bit Darwin
+        # otherwise.
+        self.utp_socket = ctypes.c_void_p(utp_socket)
         self.send_to_proc = send_to_proc
 
     def init_outgoing(self, send_to, addr):
