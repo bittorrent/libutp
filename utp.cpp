@@ -631,7 +631,7 @@ struct UTPSocket {
 	// when adding send quota, this is subtracted from the
 	// current time multiplied by max_window / rtt
 	// which is the current allowed send rate.
-	int32 last_send_quota;
+	uint32 last_send_quota;
 
 	// the number of bytes we are allowed to send on
 	// this connection. If this is more than one packet
@@ -639,7 +639,7 @@ struct UTPSocket {
 	// to the packet size
 	// this value is multiplied by 100 in order to get
 	// higher accuracy when dealing with low rates
-	int32 send_quota;
+	uint32 send_quota;
 
 	SendToProc *send_to_proc;
 	void *send_to_userdata;
@@ -1057,7 +1057,7 @@ bool UTPSocket::is_writable(size_t to_write)
 
 	// if we don't have enough quota, we can't write regardless
 	if (USE_PACKET_PACING) {
-		if (send_quota / 100 < (int32)to_write) return false;
+		if (send_quota / 100 < (uint32)to_write) return false;
 	}
 
 	// subtract one to save space for the FIN packet
@@ -1210,12 +1210,12 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags)
 
 void UTPSocket::update_send_quota()
 {
-	int dt = g_current_ms - last_send_quota;
-	if (dt == 0) return;
+	if (last_send_quota >= g_current_ms) return;
+	uint32 dt = g_current_ms - last_send_quota;
 	last_send_quota = g_current_ms;
 	size_t add = max_window * dt * 100 / (rtt_hist.delay_base?rtt_hist.delay_base:50);
 	if (add > max_window * 100 && add > MAX_CWND_INCREASE_BYTES_PER_RTT * 100) add = max_window;
-	send_quota += (int32)add;
+	send_quota += (uint32)add;
 //	LOG_UTPV("0x%08x: UTPSocket::update_send_quota dt:%d rtt:%u max_window:%u quota:%d",
 //			 this, dt, rtt, (uint)max_window, send_quota / 100);
 }
@@ -1316,7 +1316,7 @@ void UTPSocket::check_timeouts()
 
 			// rate = min_rate
 			max_window = get_packet_size();
-			send_quota = max<int32>((int32)max_window * 100, send_quota);
+			send_quota = max<uint32>((uint32)max_window * 100, send_quota);
 
 			// every packet should be considered lost
 			for (int i = 0; i < cur_window_packets; ++i) {
@@ -1337,7 +1337,7 @@ void UTPSocket::check_timeouts()
 			if (cur_window_packets > 0) {
 				OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(seq_nr - cur_window_packets);
 				assert(pkt);
-				send_quota = max<int32>((int32)pkt->length * 100, send_quota);
+				send_quota = max<uint32>((uint32)pkt->length * 100, send_quota);
 
 				// Re-send the packet.
 				send_packet(pkt);
@@ -1388,7 +1388,7 @@ void UTPSocket::check_timeouts()
 
 	// make sure we don't accumulate quota when we don't have
 	// anything to send
-	int32 limit = max<int32>((int32)max_window / 2, 5 * (int32)get_packet_size()) * 100;
+	uint32 limit = max<uint32>((uint32)max_window / 2, 5 * (uint32)get_packet_size()) * 100;
 	if (send_quota > limit) send_quota = limit;
 }
 

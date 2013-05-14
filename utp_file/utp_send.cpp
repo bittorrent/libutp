@@ -364,7 +364,7 @@ int main(int argc, char* argv[])
 	sin.sin_port = htons(atoi(portchr));
 
 	utp_socket = UTP_Create(&send_to, &sm, (const struct sockaddr*)&sin, sizeof(sin));
-	UTP_SetSockopt(utp_socket, SO_SNDBUF, 100*300);
+
 	printf("creating socket %p\n", utp_socket);
 
 	UTPFunctionTable utp_callbacks = {
