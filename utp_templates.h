@@ -1,7 +1,29 @@
+/*
+ * Copyright (c) 2010-2013 BitTorrent, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #ifndef __TEMPLATES_H__
 #define __TEMPLATES_H__
 
-#include "utypes.h"
+#include "utp_types.h"
 #include <assert.h>
 
 #if defined(POSIX)
@@ -17,20 +39,6 @@
 // as evidenced by multiply-defined symbols found at link time.
 #define FORCEINLINE inline __attribute__((always_inline))
 #endif
-#endif
-
-#ifdef __GNUC__
-// Used for gcc tool chains accepting but not supporting pragma pack
-// See http://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html
-#define PACKED_ATTRIBUTE __attribute__((__packed__))
-#else
-#define PACKED_ATTRIBUTE
-#endif
-
-#ifdef __GNUC__
-#define ALIGNED_ATTRIBUTE(x)  __attribute__((aligned (x)))
-#else
-#define ALIGNED_ATTRIBUTE(x)
 #endif
 
 // Utility templates
@@ -50,10 +58,11 @@ template <typename T> static inline T clamp(T v, T mi, T ma)
 }
 
 #if (defined(__SVR4) && defined(__sun))
-#pragma pack(1)
+	#pragma pack(1)
 #else
-#pragma pack(push,1)
+	#pragma pack(push,1)
 #endif
+
 
 namespace aux
 {
@@ -79,9 +88,9 @@ typedef big_endian<uint32> uint32_big;
 typedef big_endian<uint16> uint16_big;
 
 #if (defined(__SVR4) && defined(__sun))
-#pragma pack(0)
+	#pragma pack(0)
 #else
-#pragma pack(pop)
+	#pragma pack(pop)
 #endif
 
 template<typename T> static inline void zeromem(T *a, size_t count = 1) { memset(a, 0, count * sizeof(T)); }
