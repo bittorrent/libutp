@@ -50,6 +50,7 @@
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <unistd.h>
+	#include <sys/socket.h>
 
 	#ifdef IP_DONTFRAG
 		#define IP_OPT_DONTFRAG IP_DONTFRAG
