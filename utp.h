@@ -1,33 +1,41 @@
+/*
+ * Copyright (c) 2010-2013 BitTorrent, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #ifndef __UTP_H__
 #define __UTP_H__
-
-#include "utypes.h"
-
-#ifdef WIN32
-#define _CRT_SECURE_NO_DEPRECATE
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma comment(lib,"ws2_32.lib")
-#else
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct UTPSocket;
+#include <stdarg.h>
+#include "utp_types.h"
 
-// Used to set sockopt on a uTP socket to set the version of uTP
-// to use for outgoing connections. This can only be called before
-// the uTP socket is connected
-#define SO_UTPVERSION 99
+typedef struct UTPSocket					utp_socket;
+typedef struct struct_utp_context			utp_context;
+
+enum {
+	UTP_UDP_DONTFRAG = 2,	// Used to be a #define as UDP_IP_DONTFRAG
+};
 
 enum {
 	// socket has reveived syn-ack (notification only for outgoing connection completion)
@@ -45,118 +53,127 @@ enum {
 	UTP_STATE_DESTROYING = 4,
 };
 
-// Callbacks called by a uTP socket (register with UTP_SetCallbacks)
+extern const char *utp_state_names[];
 
-// The uTP socket layer calls this when bytes have been received from the network.
-typedef void UTPOnReadProc(void *userdata, const byte *bytes, size_t count);
-
-// The uTP socket layer calls this to fill the outgoing buffer with bytes.
-// The uTP layer takes responsibility that those bytes will be delivered.
-typedef void UTPOnWriteProc(void *userdata, byte *bytes, size_t count);
-
-// The uTP socket layer calls this to retrieve number of bytes currently in read buffer
-typedef size_t UTPGetRBSize(void *userdata);
-
-// The uTP socket layer calls this whenever the socket becomes writable.
-typedef void UTPOnStateChangeProc(void *userdata, int state);
-
-// The uTP socket layer calls this when an error occurs on the socket.
-// These errors currently include ECONNREFUSED, ECONNRESET and ETIMEDOUT, but
-// could eventually include any BSD socket error.
-typedef void UTPOnErrorProc(void *userdata, int errcode);
-
-// The uTP socket layer calls this to report overhead statistics
-typedef void UTPOnOverheadProc(void *userdata, bool send, size_t count, int type);
-
-struct UTPFunctionTable {
-	UTPOnReadProc *on_read;
-	UTPOnWriteProc *on_write;
-	UTPGetRBSize *get_rb_size;
-	UTPOnStateChangeProc *on_state;
-	UTPOnErrorProc *on_error;
-	UTPOnOverheadProc *on_overhead;
+// Errors codes that can be passed to UTP_ON_ERROR callback
+enum {
+	UTP_ECONNREFUSED = 0,
+	UTP_ECONNRESET,
+	UTP_ETIMEDOUT,
 };
 
+extern const char *utp_error_code_names[];
 
-// The uTP socket layer calls this when a new incoming uTP connection is established
-// this implies writability
-typedef void UTPGotIncomingConnection(void *userdata, struct UTPSocket* s);
+enum {
+	// callback names
+	UTP_ON_FIREWALL = 0,
+	UTP_ON_ACCEPT,
+	UTP_ON_CONNECT,
+	UTP_ON_ERROR,
+	UTP_ON_READ,
+	UTP_ON_OVERHEAD_STATISTICS,
+	UTP_ON_STATE_CHANGE,
+	UTP_GET_READ_BUFFER_SIZE,
+	UTP_ON_DELAY_SAMPLE,
+	UTP_GET_UDP_MTU,
+	UTP_GET_UDP_OVERHEAD,
+	UTP_GET_MILLISECONDS,
+	UTP_GET_MICROSECONDS,
+	UTP_GET_RANDOM,
+	UTP_LOG,
+	UTP_SENDTO,
 
-// The uTP socket layer calls this to send UDP packets
-typedef void SendToProc(void *userdata, const byte *p, size_t len, const struct sockaddr *to, socklen_t tolen);
+	// context and socket options that may be set/queried
+    UTP_LOG_NORMAL,
+    UTP_LOG_MTU,
+    UTP_LOG_DEBUG,
+	UTP_SNDBUF,
+	UTP_RCVBUF,
+	UTP_TARGET_DELAY,
 
-
-// Functions which can be called with a uTP socket
-
-// Create a uTP socket
-struct UTPSocket *UTP_Create(SendToProc *send_to_proc, void *send_to_userdata,
-					  const struct sockaddr *addr, socklen_t addrlen);
-
-// Setup the callbacks - must be done before connect or on incoming connection
-void UTP_SetCallbacks(struct UTPSocket *socket, struct UTPFunctionTable *func, void *userdata);
-
-// Valid options include SO_SNDBUF, SO_RCVBUF and SO_UTPVERSION
-bool UTP_SetSockopt(struct UTPSocket *socket, int opt, int val);
-
-// Try to connect to a specified host.
-void UTP_Connect(struct UTPSocket *socket);
-
-// Process a UDP packet from the network. This will process a packet for an existing connection,
-// or create a new connection and call incoming_proc. Returns true if the packet was processed
-// in some way, false if the packet did not appear to be uTP.
-bool UTP_IsIncomingUTP(UTPGotIncomingConnection *incoming_proc,
-					   SendToProc *send_to_proc, void *send_to_userdata,
-					   const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
-
-// Process an ICMP received UDP packet.
-bool UTP_HandleICMP(const byte* buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
-
-// Write bytes to the uTP socket.
-// Returns true if the socket is still writable.
-bool UTP_Write(struct UTPSocket *socket, size_t count);
-
-// Notify the uTP socket of buffer drain
-void UTP_RBDrained(struct UTPSocket *socket);
-
-// Call periodically to process timeouts and other periodic events
-void UTP_CheckTimeouts(void);
-
-// Retrieves the peer address of the specified socket, stores this address in the
-// sockaddr structure pointed to by the addr argument, and stores the length of this
-// address in the object pointed to by the addrlen argument.
-void UTP_GetPeerName(struct UTPSocket *socket, struct sockaddr *addr, socklen_t *addrlen);
-
-void UTP_GetDelays(struct UTPSocket *socket, int32 *ours, int32 *theirs, uint32 *age);
-
-size_t UTP_GetPacketSize(struct UTPSocket *socket);
-
-#ifdef _DEBUG
-struct UTPStats {
-	uint64 _nbytes_recv;	// total bytes received
-	uint64 _nbytes_xmit;	// total bytes transmitted
-	uint32 _rexmit;		// retransmit counter
-	uint32 _fastrexmit;	// fast retransmit counter
-	uint32 _nxmit;		// transmit counter
-	uint32 _nrecv;		// receive counter (total)
-	uint32 _nduprecv;	// duplicate receive counter
+	UTP_ARRAY_SIZE,	// must be last
 };
 
-// Get stats for UTP socket
-void UTP_GetStats(struct UTPSocket *socket, UTPStats *stats);
-#endif
+extern const char *utp_callback_names[];
 
-// Close the UTP socket.
-// It is not valid to issue commands for this socket after it is closed.
-// This does not actually destroy the socket until outstanding data is sent, at which
-// point the socket will change to the UTP_STATE_DESTROYING state.
-void UTP_Close(struct UTPSocket *socket);
+typedef struct {
+	utp_context *context;
+	utp_socket *socket;
+	size_t len;
+	uint32 flags;
+	int callback_type;
+	const byte *buf;
 
-struct UTPGlobalStats {
-	uint32 _nraw_recv[5];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (global)
-	uint32 _nraw_send[5];	// total packets sent less than 300/600/1200/MTU bytes for all connections (global)
+	union {
+		const struct sockaddr *address;
+		int send;
+		int sample_ms;
+		int error_code;
+		int state;
+	};
+
+	union {
+		socklen_t address_len;
+		int type;
+	};
+} utp_callback_arguments;
+
+typedef uint64 utp_callback_t(utp_callback_arguments *);
+
+// Returned by utp_get_context_stats()
+typedef struct {
+	uint32 _nraw_recv[5];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (context-wide)
+	uint32 _nraw_send[5];	// total packets sent     less than 300/600/1200/MTU bytes for all connections (context-wide)
+} utp_context_stats;
+
+// Returned by utp_get_stats()
+typedef struct {
+	uint64 nbytes_recv;	// total bytes received
+	uint64 nbytes_xmit;	// total bytes transmitted
+	uint32 rexmit;		// retransmit counter
+	uint32 fastrexmit;	// fast retransmit counter
+	uint32 nxmit;		// transmit counter
+	uint32 nrecv;		// receive counter (total)
+	uint32 nduprecv;	// duplicate receive counter
+	uint32 mtu_guess;	// Best guess at MTU
+} utp_socket_stats;
+
+#define UTP_IOV_MAX 1024
+
+// For utp_writev, to writes data from multiple buffers
+struct utp_iovec {
+	void *iov_base;
+	size_t iov_len;
 };
 
-void UTP_GetGlobalStats(struct UTPGlobalStats *stats);
+// Public Functions
+utp_context*	utp_init						(int version);
+void			utp_destroy						(utp_context *ctx);
+void			utp_set_callback				(utp_context *ctx, int callback_name, utp_callback_t *proc);
+void*			utp_context_set_userdata		(utp_context *ctx, void *userdata);
+void*			utp_context_get_userdata		(utp_context *ctx);
+int				utp_context_set_option			(utp_context *ctx, int opt, int val);
+int				utp_context_get_option			(utp_context *ctx, int opt);
+int				utp_process_udp					(utp_context *ctx, const byte *buf, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_error			(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_fragmentation	(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16 next_hop_mtu);
+void			utp_check_timeouts				(utp_context *ctx);
+void			utp_issue_deferred_acks			(utp_context *ctx);
+utp_context_stats* utp_get_context_stats		(utp_context *ctx);
+utp_socket*		utp_create_socket				(utp_context *ctx);
+void*			utp_set_userdata				(utp_socket *s, void *userdata);
+void*			utp_get_userdata				(utp_socket *s);
+int				utp_setsockopt					(utp_socket *s, int opt, int val);
+int				utp_getsockopt					(utp_socket *s, int opt);
+int				utp_connect						(utp_socket *s, const struct sockaddr *to, socklen_t tolen);
+ssize_t			utp_write						(utp_socket *s, void *buf, size_t count);
+ssize_t			utp_writev						(utp_socket *s, struct utp_iovec *iovec, size_t num_iovecs);
+int				utp_getpeername					(utp_socket *s, struct sockaddr *addr, socklen_t *addrlen);
+void			utp_read_drained				(utp_socket *s);
+int				utp_get_delays					(utp_socket *s, uint32 *ours, uint32 *theirs, uint32 *age);
+utp_socket_stats* utp_get_stats					(utp_socket *s);
+utp_context*	utp_get_context					(utp_socket *s);
+void			utp_close						(utp_socket *s);
 
 #ifdef __cplusplus
 }
