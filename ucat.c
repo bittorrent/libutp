@@ -258,8 +258,27 @@ uint64 callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
-	debug("sendto: %zd byte packet to %s:%d%s\n", a->address_len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
-				(a->flags & UTP_UDP_DONTFRAG) ? "  (DF bit requested, but not yet implemented)" : "");
+#ifdef __linux__
+	static int df_state = -1;
+	int df_on = IP_PMTUDISC_DO;
+	int df_off = IP_PMTUDISC_DONT;
+	int df_desired;
+
+	if (a->flags & UTP_UDP_DONTFRAG)
+		df_desired = df_on;
+	else
+		df_desired = df_off;
+
+	if (df_state != df_desired) {
+		debug("Changing socket DF state to %s\n", df_desired == df_on ? "on" : "off");
+		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &df_desired, sizeof(df_desired)) != 0)
+			pdie("setsockopt");
+		df_state = df_desired;
+	}
+#endif
+
+	debug("sendto: %zd byte packet to %s:%d%s\n", a->len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
+				(a->flags & UTP_UDP_DONTFRAG) ? " (DF)" : "");
 
 	if (o_debug >= 3)
 		hexdump(a->buf, a->len);
