@@ -548,11 +548,11 @@ struct UTPSocket {
 		char buf[4096], buf2[4096];
 
 		va_start(va, fmt);
-		vsnprintf(buf, 4096, fmt, va);
+		utp_vsnprintf(buf, 4096, fmt, va);
 		va_end(va);
 		buf[4095] = '\0';
 
-		snprintf(buf2, 4096, "%p %s %06d %s", this, addrfmt(addr, addrbuf), conn_id_recv, buf);
+		utp_snprintf(buf2, 4096, "%p %s %06d %s", this, addrfmt(addr, addrbuf), conn_id_recv, buf);
 		buf2[4095] = '\0';
 
 		ctx->log(level, this, buf2);
@@ -3344,7 +3344,7 @@ void struct_utp_context::log(int level, utp_socket *socket, char const *fmt, ...
 	char buf[4096];
 
 	va_start(va, fmt);
-	vsnprintf(buf, 4096, fmt, va);
+	utp_vsnprintf(buf, 4096, fmt, va);
 	buf[4095] = '\0';
 	va_end(va);
 
