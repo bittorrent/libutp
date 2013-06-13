@@ -1940,13 +1940,13 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		seqnr, (uint)conn->max_window, (uint)(min_rtt / 1000), conn->rtt);
 	#endif
 
-	uint64 p = pf1->tv_usec;
+	uint64 usec = pf1->tv_usec;
 
 	conn->last_measured_delay = conn->ctx->current_ms;
 
 	// get delay in both directions
 	// record the delay to report back
-	const uint32 their_delay = (uint32)(p == 0 ? 0 : time - p);
+	const uint32 their_delay = (uint32)(usec == 0 ? 0 : time - usec);
 	conn->reply_micro = their_delay;
 	uint32 prev_delay_base = conn->their_hist.delay_base;
 	if (their_delay != 0) conn->their_hist.add_sample(their_delay, conn->ctx->current_ms);
