@@ -629,7 +629,7 @@ struct UTPSocket {
 
 	void send_packet(OutgoingPacket *pkt);
 
-	bool is_full(int bytes = -1);
+	bool is_full(size_t bytes = UINT_MAX);
 	bool flush_packets();
 	void write_outgoing_packet(size_t payload, uint flags, struct utp_iovec *iovec, size_t num_iovecs);
 
@@ -693,7 +693,7 @@ void UTPSocket::schedule_ack()
 		#if UTP_DEBUG_LOGGING
 		log(UTP_LOG_DEBUG, "schedule_ack");
 		#endif
-		ida = ctx->ack_sockets.Append(this);
+		ida = int(ctx->ack_sockets.Append(this));
 	} else {
 		#if UTP_DEBUG_LOGGING
 		log(UTP_LOG_DEBUG, "schedule_ack: already in list");
@@ -888,7 +888,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 		// we've already incremented seq_nr
 		// for this packet
  		mtu_probe_seq = (seq_nr - 1) & ACK_NR_MASK;
- 		mtu_probe_size = pkt->length;
+ 		mtu_probe_size = uint32(pkt->length);
 		assert(pkt->length >= mtu_floor);
 		assert(pkt->length <= mtu_ceiling);
  		use_as_mtu_probe = true;
@@ -903,11 +903,9 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 		: retransmit_overhead, use_as_mtu_probe ? UTP_UDP_DONTFRAG : 0);
 }
 
-bool UTPSocket::is_full(int bytes)
+bool UTPSocket::is_full(size_t bytes)
 {
-	size_t packet_size = get_packet_size();
-	if (bytes < 0) bytes = packet_size;
-	else if (size_t(bytes) > packet_size) bytes = packet_size;
+	bytes = min<size_t>(bytes, get_packet_size());
 	size_t max_send = min(max_window, opt_sndbuf, max_window_user);
 
 	// subtract one to save space for the FIN packet
@@ -1288,7 +1286,7 @@ void UTPSocket::mtu_search_update()
 
 void UTPSocket::mtu_reset()
 {
-	mtu_ceiling = get_udp_mtu();
+	mtu_ceiling = uint32(get_udp_mtu());
 	// Less would not pass TCP...
 	mtu_floor = 576;
 	log(UTP_LOG_MTU, "MTU [RESET] floor:%d ceiling:%d current:%d"
@@ -1605,8 +1603,8 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 	//our_delay *= 4;
 
 	// target is microseconds
-	int target = target_delay;
-	if (target <= 0) target = 100000;
+	size_t target = target_delay;
+	if (target == 0) target = 100000;
 
 	// this is here to compensate for very large clock drift that affects
 	// the congestion controller into giving certain endpoints an unfair
@@ -1624,7 +1622,7 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 		our_delay += penalty;
 	}
 
-	double off_target = target - our_delay;
+	double off_target = double(target) - our_delay;
 
 	// this is the same as:
 	//
@@ -2590,6 +2588,7 @@ int utp_context_set_option(utp_context *ctx, int opt, int val)
 			return 0;
 
     	case UTP_TARGET_DELAY:
+			assert(val >= 0);
 			ctx->target_delay = val;
 			return 0;
 
@@ -2615,9 +2614,9 @@ int utp_context_get_option(utp_context *ctx, int opt)
     	case UTP_LOG_NORMAL:	return ctx->log_normal ? 1 : 0;
     	case UTP_LOG_MTU:		return ctx->log_mtu    ? 1 : 0;
     	case UTP_LOG_DEBUG:		return ctx->log_debug  ? 1 : 0;
-    	case UTP_TARGET_DELAY:	return ctx->target_delay;
-		case UTP_SNDBUF:		return ctx->opt_sndbuf;
-		case UTP_RCVBUF:		return ctx->opt_rcvbuf;
+    	case UTP_TARGET_DELAY:	return int(ctx->target_delay);
+		case UTP_SNDBUF:		return int(ctx->opt_sndbuf);
+		case UTP_RCVBUF:		return int(ctx->opt_rcvbuf);
 	}
 	return -1;
 }
@@ -2641,6 +2640,7 @@ int utp_setsockopt(UTPSocket* conn, int opt, int val)
 		return 0;
 
 	case UTP_TARGET_DELAY:
+		assert(val >= 0);
 		conn->target_delay = val;
 		return 0;
 	}
@@ -2654,9 +2654,9 @@ int utp_getsockopt(UTPSocket* conn, int opt)
 	if (!conn) return -1;
 
 	switch (opt) {
-		case UTP_SNDBUF:		return conn->opt_sndbuf;
-		case UTP_RCVBUF:		return conn->opt_rcvbuf;
-		case UTP_TARGET_DELAY:	return conn->target_delay;
+		case UTP_SNDBUF:		return int(conn->opt_sndbuf);
+		case UTP_RCVBUF:		return int(conn->opt_rcvbuf);
+		case UTP_TARGET_DELAY:	return int(conn->target_delay);
 	}
 
 	return -1;

@@ -86,7 +86,7 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 uint utp_hash_mem(const void *keyp, size_t keysize)
 {
 	uint hash = 0;
-	uint n = keysize;
+	size_t n = keysize;
 	while (n >= 4) {
 		hash ^= Read32(keyp);
 		keyp = (byte*)keyp + sizeof(uint32);
