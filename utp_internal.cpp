@@ -651,7 +651,7 @@ void removeSocketFromAckList(UTPSocket *conn)
 	{
 		UTPSocket *last = conn->ctx->ack_sockets[conn->ctx->ack_sockets.GetCount() - 1];
 
-		assert(last->ida < conn->ctx->ack_sockets.GetCount());
+		assert(size_t(last->ida) < conn->ctx->ack_sockets.GetCount());
 		assert(conn->ctx->ack_sockets[last->ida] == last);
 		last->ida = conn->ida;
 		conn->ctx->ack_sockets[conn->ida] = last;
@@ -847,7 +847,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 	// at slow rates (max window < packet size)
 
 	//size_t max_send = min(max_window, opt_sndbuf, max_window_user);
-	time_t cur_time = utp_call_get_milliseconds(this->ctx, this);
+	uint64 cur_time = utp_call_get_milliseconds(this->ctx, this);
 
 	if (pkt->transmissions == 0 || pkt->need_resend) {
 		cur_window += pkt->payload;
@@ -907,7 +907,7 @@ bool UTPSocket::is_full(int bytes)
 {
 	size_t packet_size = get_packet_size();
 	if (bytes < 0) bytes = packet_size;
-	else if (bytes > packet_size) bytes = packet_size;
+	else if (size_t(bytes) > packet_size) bytes = packet_size;
 	size_t max_send = min(max_window, opt_sndbuf, max_window_user);
 
 	// subtract one to save space for the FIN packet
@@ -1172,7 +1172,7 @@ void UTPSocket::check_timeouts()
 				// On Timeout
 				duplicate_ack = 0;
 
-				int packet_size = get_packet_size();
+				size_t packet_size = get_packet_size();
 
 				if (cur_window_packets == 0 && max_window > packet_size) {
 					// we don't have any packets in-flight, even though
@@ -1180,7 +1180,7 @@ void UTPSocket::check_timeouts()
 					// idling. No need to be aggressive about resetting the
 					// congestion window. Just let it decay by a 3:rd.
 					// don't set it any lower than the packet size though
-					max_window = max(max_window * 2 / 3, size_t(packet_size));
+					max_window = max(max_window * 2 / 3, packet_size);
 				} else {
 					// our delay was so high that our congestion window
 					// was shrunk below one packet, preventing us from
