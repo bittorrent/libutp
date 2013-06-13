@@ -80,7 +80,7 @@
 	#define utp_snprintf sprintf_s
 	#define utp_vsnprintf vsnprintf_s
 #else
-	#define utp_snprintf _snprintf
+	#define utp_snprintf snprintf
 	#define utp_vsnprintf vsnprintf
 #endif
 
