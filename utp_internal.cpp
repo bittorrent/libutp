@@ -430,7 +430,7 @@ struct UTPSocket {
 	size_t max_window_user;
 	CONN_STATE state;
 	// TickCount when we last decayed window (wraps)
-	int32 last_rwin_decay;
+	uint64 last_rwin_decay;
 
 	// the sequence number of the FIN packet. This field is only set
 	// when we have received a FIN, and the flag field has the FIN flag set.
@@ -574,10 +574,7 @@ struct UTPSocket {
 	}
 
 	// Test if we're ready to decay max_window
-	// XXX this breaks when spaced by > INT_MAX/2, which is 49
-	// days; the failure mode in that case is we do an extra decay
-	// or fail to do one when we really shouldn't.
-	bool can_decay_win(int32 msec) const
+	bool can_decay_win(uint64 msec) const
 	{
 		return msec - last_rwin_decay >= MAX_WINDOW_DECAY;
 	}
@@ -1664,10 +1661,10 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 		scaled_gain = 0;
 	}
 
-	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE)?MIN_WINDOW_SIZE:max_window + scaled_gain;
+	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE)?MIN_WINDOW_SIZE:size_t(max_window + scaled_gain);
 
 	if (slow_start) {
-		size_t ss_cwnd = max_window + window_factor*get_packet_size();
+		size_t ss_cwnd = size_t(max_window + window_factor*get_packet_size());
 		if (ss_cwnd > ssthresh) {
 			slow_start = false;
 		} else if (our_delay > target*0.9) {
@@ -2006,7 +2003,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 			assert(conn->current_delay_sum / conn->current_delay_samples < INT_MAX);
 			assert(conn->current_delay_sum / conn->current_delay_samples > -INT_MAX);
 			// write the new average
-			conn->average_delay = conn->current_delay_sum / conn->current_delay_samples;
+			conn->average_delay = int32(conn->current_delay_sum / conn->current_delay_samples);
 			// each slot represents 5 seconds
 			conn->average_sample_time += 5000;
 
@@ -2079,7 +2076,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// compensate
 	assert(min_rtt >= 0);
 	if (int64(conn->our_hist.get_value()) > min_rtt) {
-		conn->our_hist.shift(conn->our_hist.get_value() - min_rtt);
+		conn->our_hist.shift(uint32(conn->our_hist.get_value() - min_rtt));
 	}
 
 	// only apply the congestion controller on acks
@@ -2493,7 +2490,7 @@ void utp_initialize_socket(	utp_socket *conn,
 	conn->last_sent_packet		= conn->ctx->current_ms;
 	conn->last_measured_delay	= conn->ctx->current_ms + 0x70000000;
 	conn->average_sample_time	= conn->ctx->current_ms + 5000;
-	conn->last_rwin_decay		= int32(conn->ctx->current_ms) - MAX_WINDOW_DECAY;
+	conn->last_rwin_decay		= conn->ctx->current_ms - MAX_WINDOW_DECAY;
 
 	conn->our_hist.clear(conn->ctx->current_ms);
 	conn->their_hist.clear(conn->ctx->current_ms);
@@ -3278,7 +3275,7 @@ int utp_get_delays(UTPSocket *conn, uint32 *ours, uint32 *theirs, uint32 *age)
 
 	if (ours)   *ours   = conn->our_hist.get_value();
 	if (theirs) *theirs = conn->their_hist.get_value();
-	if (age)    *age    = conn->ctx->current_ms - conn->last_measured_delay;
+	if (age)    *age    = uint32(conn->ctx->current_ms - conn->last_measured_delay);
 	return 0;
 }
 
