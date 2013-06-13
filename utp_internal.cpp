@@ -3338,9 +3338,9 @@ void* utp_get_userdata(utp_socket *socket) {
 void struct_utp_context::log(int level, utp_socket *socket, char const *fmt, ...)
 {
 	switch (level) {
-		case UTP_LOG_NORMAL:	if (!log_normal) return;
-		case UTP_LOG_MTU:		if (!log_mtu)    return;
-		case UTP_LOG_DEBUG:		if (!log_debug)  return;
+		case UTP_LOG_NORMAL:	if (!log_normal) return; break;
+		case UTP_LOG_MTU:		if (!log_mtu)    return; break;
+		case UTP_LOG_DEBUG:		if (!log_debug)  return; break;
 	}
 
 	va_list va;
