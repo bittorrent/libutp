@@ -631,7 +631,7 @@ struct UTPSocket {
 
 	bool is_full(size_t bytes = UINT_MAX);
 	bool flush_packets();
-	void write_outgoing_packet(size_t payload, uint flags, struct utp_iovec *iovec, size_t num_iovecs);
+	void write_outgoing_packet(size_t payload, byte flags, struct utp_iovec *iovec, size_t num_iovecs);
 
 	#ifdef _DEBUG
 	void check_invariant();
@@ -753,7 +753,7 @@ void UTPSocket::send_ack(bool synack)
 	pfa.pf.set_version(1);
 	pfa.pf.set_type(ST_STATE);
 	pfa.pf.ext = 0;
-	pfa.pf.connid = conn_id_send;
+	pfa.pf.connid = uint16(conn_id_send);
 	pfa.pf.ack_nr = ack_nr;
 	pfa.pf.seq_nr = seq_nr;
 	pfa.pf.windowsize = (uint32)last_rcv_win;
@@ -828,7 +828,7 @@ void UTPSocket::send_rst(utp_context *ctx,
 	pf1.set_version(1);
 	pf1.set_type(ST_RESET);
 	pf1.ext = 0;
-	pf1.connid = conn_id_send;
+	pf1.connid = uint16(conn_id_send);
 	pf1.ack_nr = ack_nr;
 	pf1.seq_nr = seq_nr;
 	pf1.windowsize = 0;
@@ -962,7 +962,7 @@ bool UTPSocket::flush_packets()
 // @flags: either ST_DATA, or ST_FIN
 // @iovec: base address of iovec array
 // @num_iovecs: number of iovecs in array
-void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iovec *iovec, size_t num_iovecs)
+void UTPSocket::write_outgoing_packet(size_t payload, byte flags, struct utp_iovec *iovec, size_t num_iovecs)
 {
 	// Setup initial timeout timer
 	if (cur_window_packets == 0) {
@@ -1051,7 +1051,7 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 		p1->set_version(1);
 		p1->set_type(flags);
 		p1->ext = 0;
-		p1->connid = conn_id_send;
+		p1->connid = uint16(conn_id_send);
 		p1->windowsize = (uint32)last_rcv_win;
 		p1->ack_nr = ack_nr;
 
@@ -1499,7 +1499,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 		if (bit_set) {
 			// the selective ack should never ACK the packet we're waiting for to decrement cur_window_packets
 			assert((v & outbuf.mask) != ((seq_nr - cur_window_packets) & outbuf.mask));
-			ack_packet(v);
+			ack_packet(uint16(v));
 			continue;
 		}
 
@@ -1582,7 +1582,8 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 	if (back_off)
 		maybe_decay_win(ctx->current_ms);
 
-	duplicate_ack = count;
+	assert(count >= 0 && count <= BYTE_MAX);
+	duplicate_ack = byte(count);
 }
 
 void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 min_rtt)
@@ -2702,7 +2703,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 
 	// if you need compatibiltiy with 1.8.1, use this. it increases attackability though.
 	//conn->seq_nr = 1;
-	conn->seq_nr = utp_call_get_random(conn->ctx, conn);
+	conn->seq_nr = (uint16)utp_call_get_random(conn->ctx, conn);
 
 	// Create the connect packet.
 	const size_t header_size = sizeof(PacketFormatV1);
@@ -2716,7 +2717,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 	p1->set_version(1);
 	p1->set_type(ST_SYN);
 	p1->ext = 0;
-	p1->connid = conn->conn_id_recv;
+	p1->connid = (uint16)conn->conn_id_recv;
 	p1->windowsize = (uint32)conn->last_rcv_win;
 	p1->seq_nr = conn->seq_nr;
 	pkt->transmissions = 0;
@@ -2878,10 +2879,10 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 		RST_Info &r = ctx->rst_info.Append();
 		r.addr = addr;
 		r.connid = id;
-		r.ack_nr = seq_nr;
+		r.ack_nr = (uint16)seq_nr;
 		r.timestamp = ctx->current_ms;
 
-		UTPSocket::send_rst(ctx, addr, id, seq_nr, utp_call_get_random(ctx, NULL));
+		UTPSocket::send_rst(ctx, addr, id, (uint16)seq_nr, (uint16)utp_call_get_random(ctx, NULL));
 		return 1;
 	}
 
@@ -2922,8 +2923,8 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 		// Create a new UTP socket to handle this new connection
 		UTPSocket *conn = utp_create_socket(ctx);
 		utp_initialize_socket(conn, to, tolen, false, id, id+1, id);
-		conn->ack_nr = seq_nr;
-		conn->seq_nr = utp_call_get_random(ctx, NULL);
+		conn->ack_nr = (uint16)seq_nr;
+		conn->seq_nr = (uint16)utp_call_get_random(ctx, NULL);
 		conn->fast_resend_seq_nr = conn->seq_nr;
 		conn->state = CS_CONNECTED;
 
