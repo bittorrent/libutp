@@ -94,6 +94,9 @@ struct UTPSocketKeyData {
 	UTPSocketKey key;
 	UTPSocket *socket;
 	utp_link_t link;
+
+private:
+	UTPSocketKeyData();
 };
 
 #define UTP_SOCKET_BUCKETS 79
