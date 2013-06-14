@@ -1123,7 +1123,7 @@ void UTPSocket::check_timeouts()
 			bool ignore_loss = false;
 
 			if (cur_window_packets == 1
-				&& ((seq_nr - 1) & ACK_NR_MASK) == mtu_probe_seq
+				&& uint32((seq_nr - 1) & ACK_NR_MASK) == mtu_probe_seq
 				&& mtu_probe_seq != 0) {
 				// we only had  a single outstanding packet that timed out, and it was the probe
 				mtu_ceiling = mtu_probe_size - 1;
