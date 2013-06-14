@@ -1582,7 +1582,7 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 	if (back_off)
 		maybe_decay_win(ctx->current_ms);
 
-	assert(count >= 0 && count <= BYTE_MAX);
+	assert(count >= 0 && count <= 0xFF);
 	duplicate_ack = byte(count);
 }
 

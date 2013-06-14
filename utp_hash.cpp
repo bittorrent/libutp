@@ -64,8 +64,8 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	// Ensure structures will be at aligned memory addresses
 	// TODO:  make this 64-bit clean
 	assert(0 == (total_size % 4));
-	assert(key_size > 0 && key_size <= BYTE_MAX);
-	assert(total_size > 0 && total_size <= BYTE_MAX);
+	assert(key_size > 0 && key_size <= 0xFF);
+	assert(total_size > 0 && total_size <= 0xFF);
 
 	int size = ALLOCATION_SIZE(N, total_size, initial);
 	utp_hash_t *hash = (utp_hash_t *) malloc( size );
