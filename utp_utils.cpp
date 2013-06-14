@@ -241,14 +241,14 @@ uint64 utp_default_get_udp_overhead(utp_callback_arguments *args) {
 	return (args->address->sa_family == AF_INET6) ? UDP_TEREDO_OVERHEAD : UDP_IPV4_OVERHEAD;
 }
 
-uint64 utp_default_get_random(utp_callback_arguments *args) {
+uint64 utp_default_get_random(utp_callback_arguments *) {
 	return rand();
 }
 
-uint64 utp_default_get_milliseconds(utp_callback_arguments *args) {
+uint64 utp_default_get_milliseconds(utp_callback_arguments *) {
 	return UTP_GetMilliseconds();
 }
 
-uint64 utp_default_get_microseconds(utp_callback_arguments *args) {
+uint64 utp_default_get_microseconds(utp_callback_arguments *) {
 	return UTP_GetMicroseconds();
 }
