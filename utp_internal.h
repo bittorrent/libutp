@@ -60,9 +60,9 @@ enum bandwidth_type_t {
 
 struct PACKED_ATTRIBUTE RST_Info {
 	PackedSockAddr addr;
+	uint64 timestamp;
 	uint32 connid;
 	uint16 ack_nr;
-	uint64 timestamp;
 };
 
 // It's really important that we don't have duplicate keys in the hash table.
