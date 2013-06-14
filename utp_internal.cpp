@@ -2431,7 +2431,10 @@ UTPSocket::~UTPSocket()
 	}
 
 	// Remove object from the global hash table
-	UTPSocketKeyData* kd = ctx->utp_sockets->Delete(UTPSocketKey(addr, conn_id_recv));
+#ifndef NDEBUG
+	UTPSocketKeyData* kd =
+#endif
+		ctx->utp_sockets->Delete(UTPSocketKey(addr, conn_id_recv));
 	assert(kd);
 
 	// remove the socket from ack_sockets if it was there also
