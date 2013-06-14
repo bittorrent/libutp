@@ -4,7 +4,6 @@ CXXFLAGS = $(CFLAGS) -fPIC -fno-rtti
 CC       = gcc
 CXX      = g++
 
-CXXFLAGS += -Wno-sign-compare
 CXXFLAGS += -fpermissive
 
 # Uncomment to enable utp_get_stats(), and a few extra sanity checks

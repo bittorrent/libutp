@@ -1855,7 +1855,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	// Process acknowledgment
 	// acks is the number of packets that was acked
-	int acks = (pk_ack_nr - (conn->seq_nr - 1 - conn->cur_window_packets)) & ACK_NR_MASK;
+	uint16 acks = (pk_ack_nr - (conn->seq_nr - 1 - conn->cur_window_packets)) & ACK_NR_MASK;
 
 	// this happens when we receive an old ack nr
 	if (acks > conn->cur_window_packets) acks = 0;
@@ -1903,8 +1903,8 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	uint64 now = utp_call_get_microseconds(conn->ctx, conn);
 
-	for (int i = 0; i < acks; ++i) {
-		int seq = (conn->seq_nr - conn->cur_window_packets + i) & ACK_NR_MASK;
+	for (uint16 i = 0; i < acks; ++i) {
+		uint16 seq = (conn->seq_nr - conn->cur_window_packets + i) & ACK_NR_MASK;
 		OutgoingPacket *pkt = (OutgoingPacket*)conn->outbuf.get(seq);
 		if (pkt == 0 || pkt->transmissions == 0) continue;
 		assert((int)(pkt->payload) >= 0);
