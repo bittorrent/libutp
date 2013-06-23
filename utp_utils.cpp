@@ -159,6 +159,20 @@ uint64 UTP_GetMicroseconds()
 	return now;
 }
 
+uint64 UTP_GetMicroseconds()
+{
+	static uint64 offset = 0, previous = 0;
+
+	uint64 now = GetMicroseconds() + offset;
+	if (previous > now) {
+		/* Eek! */
+		offset += previous - now;
+		now = previous;
+	}
+	previous = now;
+	return now;
+}
+
 uint32 UTP_GetMilliseconds()
 {
 	return UTP_GetMicroseconds() / 1000;
