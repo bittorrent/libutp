@@ -61,7 +61,7 @@ enum bandwidth_type_t {
 struct PACKED_ATTRIBUTE RST_Info {
 	PackedSockAddr addr;
 	uint64 timestamp;
-	uint32 connid;
+	uint16 connid;
 	uint16 ack_nr;
 };
 
@@ -73,9 +73,9 @@ void UTP_FreeAll(struct UTPSocketHT *utp_sockets);
 
 struct UTPSocketKey {
 	PackedSockAddr addr;
-	uint32 recv_id;		 // "conn_seed", "conn_id"
+	uint16 recv_id;		 // "conn_seed", "conn_id"
 
-	UTPSocketKey(const PackedSockAddr& _addr, uint32 _recv_id) {
+	UTPSocketKey(const PackedSockAddr& _addr, uint16 _recv_id) {
 		memset(this, 0, sizeof(*this));
 		addr = _addr;
 		recv_id = _recv_id;
