@@ -108,18 +108,7 @@ static uint64 __GetMicroseconds()
 	return ret;
 }
 
-static inline uint64 UTP_GetMilliseconds()
-{
-	return GetTickCount();
-}
-
 #else //!WIN32
-
-static inline uint64 UTP_GetMicroseconds(void);
-static inline uint64 UTP_GetMilliseconds()
-{
-	return UTP_GetMicroseconds() / 1000;
-}
 
 #if defined(__APPLE__)
 
@@ -206,6 +195,11 @@ static inline uint64 UTP_GetMicroseconds()
 	}
 	previous = now;
 	return now;
+}
+
+static inline uint64 UTP_GetMilliseconds()
+{
+	return UTP_GetMicroseconds() / 1000;
 }
 
 #define ETHERNET_MTU 1500
