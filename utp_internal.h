@@ -38,6 +38,18 @@
 /* These originally lived in utp_config.h */
 #define CCONTROL_TARGET (100 * 1000) // us
 
+// default number of bytes to increase max window size by, per RTT. This is
+// scaled down linearly proportional to off_target. i.e. if all packets
+// in one window have 0 delay, window size will increase by this number.
+// Typically it's less. TCP increases one MSS per RTT, which is 1500
+#define DEFAULT_MAX_CWND_INCREASE_BYTES_PER_RTT 3000
+
+// this is the default minimum max_window value. It can never drop below this
+#define DEFAULT_MIN_WINDOW_SIZE 10
+
+// default round trip timeout
+#define DEFAULT_RTO 3000 // ms
+
 enum bandwidth_type_t {
 	payload_bandwidth, connect_overhead,
 	close_overhead, ack_overhead,
@@ -127,6 +139,9 @@ struct struct_utp_context {
 	size_t target_delay;
 	size_t opt_sndbuf;
 	size_t opt_rcvbuf;
+	size_t min_window;
+	size_t max_window_increase;
+	uint32 rto;
 	uint64 last_check;
 
 	struct_utp_context();

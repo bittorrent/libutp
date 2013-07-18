@@ -35,11 +35,6 @@
 
 #define	TIMEOUT_CHECK_INTERVAL	500
 
-// number of bytes to increase max window size by, per RTT. This is
-// scaled down linearly proportional to off_target. i.e. if all packets
-// in one window have 0 delay, window size will increase by this number.
-// Typically it's less. TCP increases one MSS per RTT, which is 1500
-#define MAX_CWND_INCREASE_BYTES_PER_RTT 3000
 #define CUR_DELAY_SIZE 3
 // experiments suggest that a clock skew of 10 ms per 325 seconds
 // is not impossible. Reset delay_base every 13 minutes. The clock
@@ -54,9 +49,6 @@
 #define OUTGOING_BUFFER_MAX_SIZE 1024
 
 #define PACKET_SIZE 1435
-
-// this is the minimum max_window value. It can never drop below this
-#define MIN_WINDOW_SIZE 10
 
 // if we receive 4 or more duplicate acks, we resend the packet
 // that hasn't been acked yet
@@ -410,8 +402,12 @@ struct UTPSocket {
 	// that are marked as needing to be re-sent (due to a timeout)
 	// don't count either
 	size_t cur_window;
+	// minimum window size, in bytes
+	size_t min_window;
 	// maximum window size, in bytes
 	size_t max_window;
+	// maximum window increase per RTT, in bytes
+	size_t max_window_increase;
 	// UTP_SNDBUF setting, in bytes
 	size_t opt_sndbuf;
 	// UTP_RCVBUF setting, in bytes
@@ -590,8 +586,8 @@ struct UTPSocket {
 			// TCP uses 0.5
 			max_window = (size_t)(max_window * .5);
 			last_rwin_decay = current_ms;
-			if (max_window < MIN_WINDOW_SIZE)
-				max_window = MIN_WINDOW_SIZE;
+			if (max_window < min_window)
+				max_window = min_window;
 			slow_start = false;
 			ssthresh = max_window;
 		}
@@ -1609,7 +1605,7 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 
 	// target is microseconds
 	size_t target = target_delay;
-	if (target == 0) target = 100000;
+	if (target == 0) target = CCONTROL_TARGET;
 
 	// this is here to compensate for very large clock drift that affects
 	// the congestion controller into giving certain endpoints an unfair
@@ -1631,13 +1627,13 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 
 	// this is the same as:
 	//
-	//    (min(off_target, target) / target) * (bytes_acked / max_window) * MAX_CWND_INCREASE_BYTES_PER_RTT
+	//    (min(off_target, target) / target) * (bytes_acked / max_window) * max_window_increase
 	//
 	// so, it's scaling the max increase by the fraction of the window this ack represents, and the fraction
 	// of the target delay the current delay represents.
 	// The min() around off_target protects against crazy values of our_delay, which may happen when th
 	// timestamps wraps, or by just having a malicious peer sending garbage. This caps the increase
-	// of the window size to MAX_CWND_INCREASE_BYTES_PER_RTT per rtt.
+	// of the window size to max_window_increase per rtt.
 	// as for large negative numbers, this direction is already capped at the min packet size further down
 	// the min around the bytes_acked protects against the case where the window size was recently
 	// shrunk and the number of acked bytes exceeds that. This is considered no more than one full
@@ -1647,14 +1643,14 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 	double window_factor = (double)min(bytes_acked, max_window) / (double)max(max_window, bytes_acked);
 
 	double delay_factor = off_target / target;
-	double scaled_gain = MAX_CWND_INCREASE_BYTES_PER_RTT * window_factor * delay_factor;
+	double scaled_gain = max_window_increase * window_factor * delay_factor;
 
-	// since MAX_CWND_INCREASE_BYTES_PER_RTT is a cap on how much the window size (max_window)
+	// since max_window_increase is a cap on how much the window size (max_window)
 	// may increase per RTT, we may not increase the window size more than that proportional
 	// to the number of bytes that were acked, so that once one window has been acked (one rtt)
 	// the increase limit is not exceeded
 	// the +1. is to allow for floating point imprecision
-	assert(scaled_gain <= 1. + MAX_CWND_INCREASE_BYTES_PER_RTT * (double)min(bytes_acked, max_window) / (double)max(max_window, bytes_acked));
+	assert(scaled_gain <= 1. + max_window_increase * (double)min(bytes_acked, max_window) / (double)max(max_window, bytes_acked));
 
 	if (scaled_gain > 0 && ctx->current_ms - last_maxed_out_window > 1000) {
 		// if it was more than 1 second since we tried to send a packet
@@ -1664,7 +1660,7 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 		scaled_gain = 0;
 	}
 
-	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE)?MIN_WINDOW_SIZE:size_t(max_window + scaled_gain);
+	size_t ledbat_cwnd = (max_window + scaled_gain < min_window) ? min_window : size_t(max_window + scaled_gain);
 
 	if (slow_start) {
 		size_t ss_cwnd = size_t(max_window + window_factor*get_packet_size());
@@ -1685,7 +1681,7 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 
 	// make sure that the congestion window is below max
 	// make sure that we don't shrink our window too small
-	max_window = clamp<size_t>(max_window, MIN_WINDOW_SIZE, opt_sndbuf);
+	max_window = clamp<size_t>(max_window, min_window, opt_sndbuf);
 
 	// used in parse_log.py
 	log(UTP_LOG_NORMAL, "actual_delay:%u our_delay:%d their_delay:%u off_target:%d max_window:%u "
@@ -2536,6 +2532,8 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 	conn->average_delay			= 0;
 	conn->current_delay_samples	= 0;
 	conn->cur_window			= 0;
+	conn->min_window			= ctx->min_window;
+	conn->max_window_increase   = ctx->max_window_increase;
 	conn->eof_pkt				= 0;
 	conn->last_maxed_out_window	= 0;
 	conn->mtu_probe_seq			= 0;
@@ -2543,7 +2541,7 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 	conn->current_delay_sum		= 0;
 	conn->average_delay_base	= 0;
 	conn->retransmit_count		= 0;
-	conn->rto					= 3000;
+	conn->rto					= ctx->rto;
 	conn->rtt_var				= 800;
 	conn->seq_nr				= 1;
 	conn->ack_nr				= 0;
@@ -2606,6 +2604,21 @@ int utp_context_set_option(utp_context *ctx, int opt, int val)
 			assert(val >= 1);
 			ctx->opt_rcvbuf = val;
 			return 0;
+
+		case UTP_MAX_WINDOW_INCREASE:
+			assert(val >= 1);
+			ctx->max_window_increase = val;
+			return 0;
+
+		case UTP_MIN_WINDOW_SIZE:
+			assert(val >= 1);
+			ctx->min_window = val;
+			return 0;
+
+		case UTP_RTO:
+			assert(val >= 1);
+			ctx->rto = val;
+			return 0;
 	}
 	return -1;
 }
@@ -2622,6 +2635,9 @@ int utp_context_get_option(utp_context *ctx, int opt)
     	case UTP_TARGET_DELAY:	return int(ctx->target_delay);
 		case UTP_SNDBUF:		return int(ctx->opt_sndbuf);
 		case UTP_RCVBUF:		return int(ctx->opt_rcvbuf);
+		case UTP_MAX_WINDOW_INCREASE:	return int(ctx->max_window_increase);
+		case UTP_MIN_WINDOW_SIZE:		return int(ctx->min_window);
+		case UTP_RTO:					return int(ctx->rto);
 	}
 	return -1;
 }
@@ -2648,6 +2664,21 @@ int utp_setsockopt(UTPSocket* conn, int opt, int val)
 		assert(val >= 0);
 		conn->target_delay = val;
 		return 0;
+
+	case UTP_MAX_WINDOW_INCREASE:
+		assert(val >= 1);
+		conn->max_window_increase = val;
+		return 0;
+
+	case UTP_MIN_WINDOW_SIZE:
+		assert(val >= 1);
+		conn->min_window = val;
+		return 0;
+
+	case UTP_RTO:
+		assert(val >= 1);
+		conn->rto = val;
+		return 0;
 	}
 
 	return -1;
@@ -2662,6 +2693,9 @@ int utp_getsockopt(UTPSocket* conn, int opt)
 		case UTP_SNDBUF:		return int(conn->opt_sndbuf);
 		case UTP_RCVBUF:		return int(conn->opt_rcvbuf);
 		case UTP_TARGET_DELAY:	return int(conn->target_delay);
+		case UTP_MAX_WINDOW_INCREASE:	return int(conn->max_window_increase);
+		case UTP_MIN_WINDOW_SIZE:		return int(conn->min_window);
+		case UTP_RTO:					return int(conn->rto);
 	}
 
 	return -1;
