@@ -2864,7 +2864,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 			}
 		}
 
-		if (ctx->rst_info.GetCount() > RST_INFO_LIMIT) {
+		if (ctx->rst_info.GetCount() >= RST_INFO_LIMIT) {
 
 			#if UTP_DEBUG_LOGGING
 			ctx->log(UTP_LOG_DEBUG, NULL, "recv not sending RST to non-SYN (limit at %u stored)", (uint)ctx->rst_info.GetCount());
