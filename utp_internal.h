@@ -132,6 +132,7 @@ struct struct_utp_context {
 	struct_utp_context();
 	~struct_utp_context();
 
+	bool is_log_level_enabled(int level) const;
 	void log(int level, utp_socket *socket, char const *fmt, ...);
 
 	bool log_normal:1;	// log normal events?

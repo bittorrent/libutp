@@ -543,6 +543,11 @@ struct UTPSocket {
 
 	void log(int level, char const *fmt, ...)
 	{
+		if (!ctx->is_log_level_enabled(level))
+		{
+			return;
+		}
+
 		va_list va;
 		char buf[4096], buf2[4096];
 
@@ -1687,7 +1692,7 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 			"delay_base:%u delay_sum:%d target_delay:%d acked_bytes:%u cur_window:%u "
 			"scaled_gain:%f rtt:%u rate:%u wnduser:%u rto:%u timeout:%d get_microseconds:"I64u" "
 			"cur_window_packets:%u packet_size:%u their_delay_base:%u their_actual_delay:%u "
-			"average_delay:%d clock_drift:%d clock_drift_raw:%d delay_penalty:%d current_delay_sum:"I64u
+			"average_delay:%d clock_drift:%d clock_drift_raw:%d delay_penalty:%d current_delay_sum:"I64u" "
 			"current_delay_samples:%d average_delay_base:%d last_maxed_out_window:"I64u" opt_sndbuf:%d "
 			"current_ms:"I64u"",
 			actual_delay, our_delay / 1000, their_hist.get_value() / 1000,
@@ -3332,12 +3337,20 @@ void* utp_get_userdata(utp_socket *socket) {
 	return socket ? socket->userdata : NULL;
 }
 
-void struct_utp_context::log(int level, utp_socket *socket, char const *fmt, ...)
+bool struct_utp_context::is_log_level_enabled(int level) const
 {
 	switch (level) {
-		case UTP_LOG_NORMAL:	if (!log_normal) return; break;
-		case UTP_LOG_MTU:		if (!log_mtu)    return; break;
-		case UTP_LOG_DEBUG:		if (!log_debug)  return; break;
+		case UTP_LOG_NORMAL:	return log_normal;
+		case UTP_LOG_MTU:		return log_mtu;
+		case UTP_LOG_DEBUG:		return log_debug;
+		default:				assert(false); return false;
+	}
+}
+
+void struct_utp_context::log(int level, utp_socket *socket, char const *fmt, ...)
+{
+	if (!is_log_level_enabled(level)) {
+		return;
 	}
 
 	va_list va;
