@@ -4,8 +4,12 @@
 #include "utypes.h"
 
 #ifdef WIN32
+#ifndef _CRT_SECURE_NO_DEPRECATE
 #define _CRT_SECURE_NO_DEPRECATE
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -142,7 +146,7 @@ struct UTPStats {
 };
 
 // Get stats for UTP socket
-void UTP_GetStats(struct UTPSocket *socket, UTPStats *stats);
+void UTP_GetStats(struct UTPSocket *socket, struct UTPStats *stats);
 #endif
 
 // Close the UTP socket.
