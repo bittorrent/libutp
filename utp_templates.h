@@ -134,6 +134,13 @@ public:
 		return r;
 	}
 
+	void RemoveElement(size_t index) {
+		if (index < count-1) {
+			memmove(&mem[index], &mem[index+1], (count - index - 1) * sizeof(T));
+		}
+		Resize(count-1);
+	}
+
 	T inline &Append() {
 		if (count >= alloc) Grow();
 		return mem[count++];
