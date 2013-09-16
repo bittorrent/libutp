@@ -1667,16 +1667,19 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE)?MIN_WINDOW_SIZE:max_window + scaled_gain;
 
 	if (slow_start) {
-		size_t ss_cwnd = max_window + window_factor*get_packet_size();
-		if (ss_cwnd > ssthresh) {
+		size_t ss_cwnd = max_window + bytes_acked;
+
+		if (cur_window + get_packet_size() <= max_window) ss_cwnd = max_window;
+
+		max_window = max(ss_cwnd, ledbat_cwnd);
+
+		if (max_window > ssthresh) {
 			slow_start = false;
-		} else if (our_delay > target*0.9) {
+		} else if (our_delay > target * 0.9) {
 			// even if we're a little under the target delay, we conservatively
 			// discontinue the slow start phase
 			slow_start = false;
 			ssthresh = max_window;
-		} else {
-			max_window = max(ss_cwnd, ledbat_cwnd);
 		}
 	} else {
 		max_window = ledbat_cwnd;
@@ -2555,7 +2558,7 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 	conn->opt_sndbuf			= ctx->opt_sndbuf;
 	conn->opt_rcvbuf			= ctx->opt_rcvbuf;
 	conn->slow_start			= true;
-	conn->ssthresh				= conn->opt_sndbuf;
+	conn->ssthresh				= conn->opt_sndbuf / 3;
 	conn->clock_drift			= 0;
 	conn->clock_drift_raw		= 0;
 	conn->outbuf.mask			= 15;
