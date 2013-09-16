@@ -65,6 +65,28 @@ struct PACKED_ATTRIBUTE RST_Info {
 	uint64 timestamp;
 };
 
+struct UTPPathData {
+	PackedSockAddr key;
+
+	// information about the path
+	int cwnd;
+	int ssthres;
+	int mtu_floor;
+	int mtu_ceiling;
+	int timestamp; // milliseconds
+
+	utp_link_t link;
+};
+
+struct UTPPathHistory : utpHashTable<PackedSockAddr, UTPPathData> {
+	UTPPathHistory() {
+		this->Create(257, 15);
+	}
+	~UTPPathHistory() {
+		this->Free();
+	}
+};
+
 // It's really important that we don't have duplicate keys in the hash table.
 // If we do, we'll eventually crash. if we try to remove the second instance
 // of the key, we'll accidentally remove the first instead. then later,
@@ -121,6 +143,7 @@ struct struct_utp_context {
 	Array<UTPSocket*> ack_sockets;
 	Array<RST_Info> rst_info;
 	UTPSocketHT *utp_sockets;
+	UTPPathHistory utp_paths;
 	size_t target_delay;
 	size_t opt_sndbuf;
 	size_t opt_rcvbuf;

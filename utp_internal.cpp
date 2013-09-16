@@ -640,6 +640,8 @@ struct UTPSocket {
 	void check_invariant();
 	#endif
 
+	void update_path_data();
+
 	void check_timeouts();
 	int ack_packet(uint16 seq);
 	size_t selective_ack_bytes(uint base, const byte* mask, byte len, int64& min_rtt);
@@ -1093,6 +1095,31 @@ void UTPSocket::check_invariant()
 }
 #endif
 
+void UTPSocket::update_path_data()
+{
+	UTPPathData* path_data = ctx->utp_paths.Lookup(addr);
+	if (path_data == NULL) {
+		path_data = ctx->utp_paths.Add(addr);
+		path_data->timestamp = 0;
+	}
+	// only if the data that's in there is stale do
+	// we overwrite it. Otherwise we leave the better
+	// values (we don't want to clobber some other socket's
+	// good values with our (potentially) crappy ones.
+	if (path_data->timestamp < ctx->current_ms - 1000) {
+		path_data->cwnd = max_window;
+		path_data->ssthres = ssthresh;
+		path_data->mtu_ceiling = mtu_ceiling;
+		path_data->mtu_floor = mtu_floor;
+	} else {
+		path_data->cwnd = max<int>(path_data->cwnd, max_window);
+		path_data->ssthres = max<int>(path_data->ssthres, ssthresh);
+		path_data->mtu_ceiling = min<int>(path_data->mtu_ceiling, mtu_ceiling);
+		path_data->mtu_floor = max<int>(path_data->mtu_floor, mtu_floor);
+	}
+	path_data->timestamp = ctx->current_ms;
+}
+
 void UTPSocket::check_timeouts()
 {
 	#ifdef _DEBUG
@@ -1110,6 +1137,11 @@ void UTPSocket::check_timeouts()
 	#endif
 
 	if (state != CS_DESTROY) flush_packets();
+
+	// update path data to this IP
+	// If this turns out to be expensive, we can probably
+	// get away with only doing this once per second
+	update_path_data();
 
 	switch (state) {
 	case CS_SYN_SENT:
@@ -2503,10 +2535,19 @@ void utp_initialize_socket(	utp_socket *conn,
 	conn->mtu_reset();
 	conn->mtu_last = conn->mtu_ceiling;
 
-	conn->ctx->utp_sockets->Add(UTPSocketKey(conn->addr, conn->conn_id_recv))->socket = conn;
-
 	// we need to fit one packet in the window when we start the connection
 	conn->max_window = conn->get_packet_size();
+
+	conn->ctx->utp_sockets->Add(UTPSocketKey(conn->addr, conn->conn_id_recv))->socket = conn;
+
+	UTPPathData* path_data = conn->ctx->utp_paths.Lookup(conn->addr);
+	if (path_data) {
+		conn->max_window = path_data->cwnd;
+		conn->ssthresh = path_data->ssthres;
+		conn->mtu_ceiling = path_data->mtu_ceiling;
+		conn->mtu_floor = path_data->mtu_floor;
+		conn->mtu_last = path_data->mtu_ceiling;
+	}
 
 	#if UTP_DEBUG_LOGGING
 	conn->log(UTP_LOG_DEBUG, "UTP socket initialized");
@@ -3240,6 +3281,18 @@ void utp_check_timeouts(utp_context *ctx)
 			delete conn;
 		}
 	}
+
+	utp_issue_deferred_acks(ctx);
+
+	// remove stale UTPPathData entries
+	utp_hash_iterator_t it2;
+	UTPPathData* path;
+	while ((path = ctx->utp_paths.Iterate(it2))) {
+		if (path->timestamp + 2000 >= ctx->current_ms)
+			continue;
+
+		ctx->utp_paths.Delete(path->key);
+	}
 }
 
 int utp_getpeername(utp_socket *conn, struct sockaddr *addr, socklen_t *addrlen)
@@ -3298,6 +3351,8 @@ void utp_close(UTPSocket *conn)
 	#if UTP_DEBUG_LOGGING
 	conn->log(UTP_LOG_DEBUG, "UTP_Close in state:%s", statenames[conn->state]);
 	#endif
+
+	conn->update_path_data();
 
 	switch(conn->state) {
 	case CS_CONNECTED:

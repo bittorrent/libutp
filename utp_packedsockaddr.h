@@ -49,7 +49,7 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	void set(const SOCKADDR_STORAGE* sa, socklen_t len);
 
 	PackedSockAddr(const SOCKADDR_STORAGE* sa, socklen_t len);
-	PackedSockAddr(void);
+	PackedSockAddr();
 
 	SOCKADDR_STORAGE get_sockaddr_storage(socklen_t *len) const;
 	cstr fmt(str s, size_t len) const;
