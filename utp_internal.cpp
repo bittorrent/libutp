@@ -394,6 +394,7 @@ struct UTPSocket {
 	utp_context *ctx;
 
 	int ida; //for ack socket list
+	int idw; //for writable socket list
 
 	uint16 retransmit_count;
 
@@ -559,6 +560,7 @@ struct UTPSocket {
 	}
 
 	void schedule_ack();
+	void schedule_writable();
 
 	// called every time mtu_floor or mtu_ceiling are adjusted
 	void mtu_search_update();
@@ -665,6 +667,22 @@ void removeSocketFromAckList(UTPSocket *conn)
 	}
 }
 
+void removeSocketFromWritableList(UTPSocket *conn)
+{
+	if (conn->idw == -1) return;
+
+	UTPSocket *last = conn->ctx->writable_sockets[conn->ctx->writable_sockets.GetCount() - 1];
+
+	assert(last->idw < conn->ctx->writable_sockets.GetCount());
+	assert(conn->ctx->writable_sockets[last->idw] == last);
+	last->idw = conn->idw;
+	conn->ctx->writable_sockets[conn->idw] = last;
+	conn->idw = -1;
+
+	// Decrease the count
+	conn->ctx->writable_sockets.SetCount(conn->ctx->writable_sockets.GetCount() - 1);
+}
+
 static void utp_register_sent_packet(utp_context *ctx, size_t length)
 {
 	if (length <= PACKET_SIZE_MID) {
@@ -701,6 +719,13 @@ void UTPSocket::schedule_ack()
 		#if UTP_DEBUG_LOGGING
 		log(UTP_LOG_DEBUG, "schedule_ack: already in list");
 		#endif
+	}
+}
+
+void UTPSocket::schedule_writable()
+{
+	if (idw == -1){
+		idw = ctx->writable_sockets.Append(this);
 	}
 }
 
@@ -1233,7 +1258,7 @@ void UTPSocket::check_timeouts()
 			log(UTP_LOG_DEBUG, "Socket writable. max_window:%u cur_window:%u packet_size:%u",
 				(uint)max_window, (uint)cur_window, (uint)get_packet_size());
 			#endif
-			utp_call_on_state_change(this->ctx, this, UTP_STATE_WRITABLE);
+			schedule_writable();
 		}
 
 		if (state >= CS_CONNECTED && state <= CS_FIN_SENT) {
@@ -2243,7 +2268,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		conn->log(UTP_LOG_DEBUG, "Socket writable. max_window:%u cur_window:%u packet_size:%u",
 			(uint)conn->max_window, (uint)conn->cur_window, (uint)conn->get_packet_size());
 		#endif
-		utp_call_on_state_change(conn->ctx, conn, UTP_STATE_WRITABLE);
+		conn->schedule_writable();
 	}
 
 	if (pk_flags == ST_STATE) {
@@ -2441,6 +2466,7 @@ UTPSocket::~UTPSocket()
 
 	// remove the socket from ack_sockets if it was there also
 	removeSocketFromAckList(this);
+	removeSocketFromWritableList(this);
 
 	// Free all memory occupied by the socket object.
 	for (size_t i = 0; i <= inbuf.mask; i++) {
@@ -2564,6 +2590,7 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 	conn->inbuf.elements		= (void**)calloc(16, sizeof(void*));
 	conn->ida					= -1;	// set the index of every new socket in ack_sockets to
 										// -1, which also means it is not in ack_sockets yet
+	conn->idw               = -1;
 
 	memset(conn->extensions, 0, sizeof(conn->extensions));
 
@@ -3201,6 +3228,17 @@ void utp_issue_deferred_acks(utp_context *ctx)
 		conn->send_ack();
 		i--;
 	}
+
+	for (size_t i = 0; i < ctx->writable_sockets.GetCount(); i++) {
+		UTPSocket *conn = ctx->writable_sockets[i];
+		if (conn->is_full()) {
+			conn->state = CS_CONNECTED_FULL;
+		} else {
+			utp_call_on_state_change(conn->ctx, conn, UTP_STATE_WRITABLE);
+		}
+		conn->idw = -1;
+	}
+	ctx->writable_sockets.Clear();
 }
 
 // Should be called every 500ms
