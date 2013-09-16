@@ -1355,7 +1355,7 @@ int UTPSocket::ack_packet(uint16 seq)
 //			assert(rtt < 6000);
 			rtt_hist.add_sample(ertt, ctx->current_ms);
 		}
-		rto = max<uint>(rtt + rtt_var * 4, 1000);
+		rto = max<uint>(rtt + rtt_var * 4, 500);
 
 		#if UTP_DEBUG_LOGGING
 		log(UTP_LOG_DEBUG, "rtt:%u avg:%u var:%u rto:%u",
@@ -1580,8 +1580,8 @@ void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
 		send_packet(pkt);
 		fast_resend_seq_nr = (v + 1) & ACK_NR_MASK;
 
-		// Re-send max 4 packets.
-		if (++i >= 4) break;
+		// Re-send max 1 packets.
+		if (++i >= 1) break;
 	}
 
 	if (back_off)
@@ -2543,8 +2543,8 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 	conn->current_delay_sum		= 0;
 	conn->average_delay_base	= 0;
 	conn->retransmit_count		= 0;
-	conn->rto					= 3000;
-	conn->rtt_var				= 800;
+	conn->rto					= 500;
+	conn->rtt_var				= 100;
 	conn->seq_nr				= 1;
 	conn->ack_nr				= 0;
 	conn->max_window_user		= 255 * PACKET_SIZE;
