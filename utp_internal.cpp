@@ -542,6 +542,12 @@ struct UTPSocket {
 	// the slow-start threshold, in bytes
 	size_t ssthresh;
 
+	// sequence numbers of packets in the send buffer that either
+	// haven't beend sent, or that need re-sending. This is used
+	// by flush_paclets, to not have to loop over all packets in
+	// the send buffer every time it's called
+	Array<uint16> unsent_packets;
+
 	void log(int level, char const *fmt, ...)
 	{
 		va_list va;
@@ -593,6 +599,11 @@ struct UTPSocket {
 				max_window = MIN_WINDOW_SIZE;
 			slow_start = false;
 			ssthresh = max_window;
+
+			if (is_full()) {
+				// mark the socket as not being writable.
+				state = CS_CONNECTED_FULL;
+			}
 		}
 	}
 
@@ -942,14 +953,22 @@ bool UTPSocket::flush_packets()
 {
 	size_t packet_size = get_packet_size();
 
+	if (is_full()) return true;
+
 	// send packets that are waiting on the pacer to be sent
 	// i has to be an unsigned 16 bit counter to wrap correctly
 	// signed types are not guaranteed to wrap the way you expect
-	for (uint16 i = seq_nr - cur_window_packets; i != seq_nr; ++i) {
+	for (int k = 0; k < unsent_packets.GetCount(); ++k) {
+		uint16 i = unsent_packets[k];
+#if UTP_DEBUG_LOGGING
+		log(UTP_LOG_DEBUG, "flush_packets(): seq_nr: %u\n", i);
+#endif
 		OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(i);
-		if (pkt == 0 || (pkt->transmissions > 0 && pkt->need_resend == false)) continue;
-		// have we run out of quota?
-		if (is_full()) return true;
+		if (pkt == 0 || (pkt->transmissions > 0 && pkt->need_resend == false)) {
+			unsent_packets.RemoveElement(k);
+			--k;
+			continue;
+		}
 
 		// Nagle check
 		// don't send the last packet if we have one packet in-flight
@@ -958,6 +977,12 @@ bool UTPSocket::flush_packets()
 			cur_window_packets == 1 ||
 			pkt->payload >= packet_size) {
 			send_packet(pkt);
+
+			unsent_packets.RemoveElement(k);
+			--k;
+
+			// have we run out of quota?
+			if (is_full()) return true;
 		}
 	}
 	return false;
@@ -1065,6 +1090,7 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 			outbuf.ensure_size(seq_nr, cur_window_packets);
 			outbuf.put(seq_nr, pkt);
 			p1->seq_nr = seq_nr;
+			unsent_packets.Append(seq_nr);
 			seq_nr++;
 			cur_window_packets++;
 		}
@@ -1072,8 +1098,6 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 		payload -= added;
 
 	} while (payload);
-
-	flush_packets();
 }
 
 #ifdef _DEBUG
@@ -1196,21 +1220,20 @@ void UTPSocket::check_timeouts()
 			}
 
 			// every packet should be considered lost
-			for (int i = 0; i < cur_window_packets; ++i) {
+			for (int i = cur_window_packets - 1; i >= 0; --i) {
 				OutgoingPacket *pkt = (OutgoingPacket*)outbuf.get(seq_nr - i - 1);
 				if (pkt == 0 || pkt->transmissions == 0 || pkt->need_resend) continue;
 				pkt->need_resend = true;
 				assert(cur_window >= pkt->payload);
 				cur_window -= pkt->payload;
+				unsent_packets.Append(seq_nr - i - 1);
+#if UTP_DEBUG_LOGGING
+				log(UTP_LOG_DEBUG, "need_resend: seq_nr: %u\n", seq_nr - i - 1);
+#endif
 			}
 
 			if (cur_window_packets > 0) {
 				retransmit_count++;
-				// used in parse_log.py
-				log(UTP_LOG_NORMAL, "Packet timeout. Resend. seq_nr:%u. timeout:%u "
-					"max_window:%u cur_window_packets:%d"
-					, seq_nr - cur_window_packets, retransmit_timeout
-					, (uint)max_window, int(cur_window_packets));
 
 				fast_timeout = true;
 				timeout_seq_nr = seq_nr;
@@ -1220,6 +1243,14 @@ void UTPSocket::check_timeouts()
 
 				// Re-send the packet.
 				send_packet(pkt);
+
+				// used in parse_log.py
+#if UTP_DEBUG_LOGGING
+				log(UTP_LOG_DEBUG, "Packet timeout. Resend. seq_nr:%u. timeout:%u "
+					"max_window:%u cur_window_packets:%d cur_window:%d"
+					, seq_nr - cur_window_packets, retransmit_timeout
+					, (uint)max_window, int(cur_window_packets), cur_window);
+#endif
 			}
 		}
 
@@ -2235,6 +2266,10 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		acks, (uint)acked_bytes, conn->seq_nr, (uint)conn->cur_window, conn->cur_window_packets);
 	#endif
 
+	if (acked_bytes > 0) {
+		conn->flush_packets();
+	}
+
 	// In case the ack dropped the current window below
 	// the max_window size, Mark the socket as writable
 	if (conn->state == CS_CONNECTED_FULL && !conn->is_full()) {
@@ -3127,12 +3162,33 @@ ssize_t utp_writev(utp_socket *conn, struct utp_iovec *iovec_input, size_t num_i
 	// don't send unless it will all fit in the window
 	size_t packet_size = conn->get_packet_size();
 	size_t num_to_send = min<size_t>(bytes, packet_size);
-	while (!conn->is_full(num_to_send)) {
+	int packets_sent = 0;
+
+	size_t max_send = min(conn->max_window, conn->opt_sndbuf, conn->max_window_user);
+	if (conn->cur_window >= max_send) {
+#if UTP_DEBUG_LOGGING
+		conn->log(UTP_LOG_DEBUG, "UTP_Write %u bytes = false (cur_window: %d max_send: %d)"
+			, (uint)bytes, conn->cur_window, max_send);
+#endif
+		conn->state = CS_CONNECTED_FULL;
+		conn->last_maxed_out_window = conn->ctx->current_ms;
+		assert(conn->is_full());
+		return false;
+	}
+
+	size_t left_in_window = max_send - conn->cur_window;
+
+#if UTP_DEBUG_LOGGING
+	conn->log(UTP_LOG_DEBUG, "UTP_Write %u bytes. left_in_window: %u", (uint)bytes, left_in_window);
+#endif
+
+	while (left_in_window >= num_to_send) {
 		// Send an outgoing packet.
 		// Also add it to the outgoing of packets that have been sent but not ACKed.
 
 		bytes -= num_to_send;
 		sent  += num_to_send;
+		left_in_window -= num_to_send;
 
 		#if UTP_DEBUG_LOGGING
 		conn->log(UTP_LOG_DEBUG, "Sending packet. seq_nr:%u ack_nr:%u wnd:%u/%u/%u rcv_win:%u size:%u cur_window_packets:%u",
@@ -3144,13 +3200,13 @@ ssize_t utp_writev(utp_socket *conn, struct utp_iovec *iovec_input, size_t num_i
 		#endif
 		conn->write_outgoing_packet(num_to_send, ST_DATA, iovec, num_iovecs);
 		num_to_send = min<size_t>(bytes, packet_size);
+		++packets_sent;
 
-		if (num_to_send == 0) {
-			#if UTP_DEBUG_LOGGING
-			conn->log(UTP_LOG_DEBUG, "UTP_Write %u bytes = true", (uint)param);
-			#endif
-			return sent;
-		}
+		if (num_to_send == 0) break;
+	}
+
+	if (packets_sent > 0) {
+		conn->flush_packets();
 	}
 
 	bool full = conn->is_full();
@@ -3304,6 +3360,7 @@ void utp_close(UTPSocket *conn)
 	case CS_CONNECTED_FULL:
 		conn->state = CS_FIN_SENT;
 		conn->write_outgoing_packet(0, ST_FIN, NULL, 0);
+		conn->flush_packets();
 		break;
 
 	case CS_SYN_SENT:
