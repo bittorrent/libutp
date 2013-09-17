@@ -45,20 +45,11 @@
 	#include <windows.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-	#define IP_OPT_DONTFRAG IP_DONTFRAGMENT
 #else
 	#include <netinet/in.h>
 	#include <arpa/inet.h>
 	#include <unistd.h>
 	#include <sys/socket.h>
-
-	#ifdef IP_DONTFRAG
-		#define IP_OPT_DONTFRAG IP_DONTFRAG
-	#elif defined IP_DONTFRAGMENT
-		#define IP_OPT_DONTFRAG IP_DONTFRAGMENT
-	#else
-		//#warning "I don't know how to set DF bit on this system"
-	#endif
 #endif
 
 #ifdef _MSC_VER

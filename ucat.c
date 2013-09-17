@@ -258,8 +258,27 @@ uint64 callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
-	debug("sendto: %zd byte packet to %s:%d%s\n", a->address_len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
-				(a->flags & UTP_UDP_DONTFRAG) ? "  (DF bit requested, but not yet implemented)" : "");
+#ifdef __linux__
+	static int df_state = -1;
+	int df_on = IP_PMTUDISC_DO;
+	int df_off = IP_PMTUDISC_DONT;
+	int df_desired;
+
+	if (a->flags & UTP_UDP_DONTFRAG)
+		df_desired = df_on;
+	else
+		df_desired = df_off;
+
+	if (df_state != df_desired) {
+		debug("Changing socket DF state to %s\n", df_desired == df_on ? "on" : "off");
+		if (setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &df_desired, sizeof(df_desired)) != 0)
+			pdie("setsockopt");
+		df_state = df_desired;
+	}
+#endif
+
+	debug("sendto: %zd byte packet to %s:%d%s\n", a->len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
+				(a->flags & UTP_UDP_DONTFRAG) ? " (DF)" : "");
 
 	if (o_debug >= 3)
 		hexdump(a->buf, a->len);
@@ -298,7 +317,7 @@ void setup(void)
 
 	#ifdef __linux__
 	int on = 1;
-	if (setsockopt(fd, SOL_IP, IP_RECVERR, &on, sizeof(on)) != 0)
+	if (setsockopt(fd, IPPROTO_IP, IP_RECVERR, &on, sizeof(on)) != 0)
 		pdie("setsockopt");
 	#endif
 
@@ -369,6 +388,7 @@ void handle_icmp()
 		struct sock_extended_err *e;
 		struct sockaddr *icmp_addr;
 		struct sockaddr_in *icmp_sin;
+		int handled;
 
 		memset(&msg, 0, sizeof(msg));
 
@@ -459,14 +479,20 @@ void handle_icmp()
 			if (o_debug >= 3)
 				hexdump(vec_buf, len);
 
+			if (!len)
+				debug("ICMP's quoted UDP payload length is %d.  ICMP processing will probably fail.\n", len);
+
 			if (e->ee_type == 3 && e->ee_code == 4) {
 				debug("ICMP type 3, code 4: Fragmentation error, discovered MTU %d\n", e->ee_info);
-				utp_process_icmp_fragmentation(ctx, vec_buf, len, (struct sockaddr *)&remote, sizeof(remote), e->ee_info);
+				handled = utp_process_icmp_fragmentation(ctx, vec_buf, len, (struct sockaddr *)&remote, sizeof(remote), e->ee_info);
 			}
 			else {
 				debug("ICMP type %d, code %d\n", e->ee_type, e->ee_code);
-				utp_process_icmp_error(ctx, vec_buf, len, (struct sockaddr *)&remote, sizeof(remote));
+				handled = utp_process_icmp_error(ctx, vec_buf, len, (struct sockaddr *)&remote, sizeof(remote));
 			}
+
+			if (!handled)
+				debug("ICMP packet not handled by UTP.  Ignoring.\n");
 		}
 	}
 }
