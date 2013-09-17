@@ -136,6 +136,6 @@ cstr PackedSockAddr::fmt(str s, size_t len) const
 		while (*++i) {}
 		*i++ = ']';
 	}
-	snprintf(i, len - (i-s), ":%u", _port);
+	utp_snprintf(i, len - (i-s), ":%u", _port);
 	return s;
 }

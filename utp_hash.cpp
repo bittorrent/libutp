@@ -64,6 +64,8 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	// Ensure structures will be at aligned memory addresses
 	// TODO:  make this 64-bit clean
 	assert(0 == (total_size % 4));
+	assert(key_size > 0 && key_size <= 0xFF);
+	assert(total_size > 0 && total_size <= 0xFF);
 
 	int size = ALLOCATION_SIZE(N, total_size, initial);
 	utp_hash_t *hash = (utp_hash_t *) malloc( size );
@@ -72,8 +74,8 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	for (int i = 0; i < N + 1; ++i)
 		hash->inits[i] = HASH_UNUSED;
 	hash->N = N;
-	hash->K = key_size;
-	hash->E = total_size;
+	hash->K = byte(key_size);
+	hash->E = byte(total_size);
 	hash->hash_compute = hashfun;
 	hash->hash_equal = compfun;
 	hash->allocated = initial;
@@ -86,7 +88,7 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 uint utp_hash_mem(const void *keyp, size_t keysize)
 {
 	uint hash = 0;
-	uint n = keysize;
+	size_t n = keysize;
 	while (n >= 4) {
 		hash ^= Read32(keyp);
 		keyp = (byte*)keyp + sizeof(uint32);

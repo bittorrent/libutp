@@ -126,10 +126,10 @@ void *utp_hash_iterate(utp_hash_t *hash, utp_hash_iterator_t *iter);
 template<typename K, typename T> class utpHashTable {
 	utp_hash_t *hash;
 public:
-	static uint compare(const void *k1, const void *k2, size_t ks) {
+	static uint compare(const void *k1, const void *k2, size_t) {
 		return *((K*)k1) == *((K*)k2);
 	}
-	static uint32 compute_hash(const void *k, size_t ks) {
+	static uint32 compute_hash(const void *k, size_t) {
 		return ((K*)k)->compute_hash();
 	}
 	void Init() { hash = NULL; }

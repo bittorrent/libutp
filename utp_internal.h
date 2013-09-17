@@ -38,6 +38,18 @@
 /* These originally lived in utp_config.h */
 #define CCONTROL_TARGET (100 * 1000) // us
 
+// default number of bytes to increase max window size by, per RTT. This is
+// scaled down linearly proportional to off_target. i.e. if all packets
+// in one window have 0 delay, window size will increase by this number.
+// Typically it's less. TCP increases one MSS per RTT, which is 1500
+#define DEFAULT_MAX_CWND_INCREASE_BYTES_PER_RTT 3000
+
+// this is the default minimum max_window value. It can never drop below this
+#define DEFAULT_MIN_WINDOW_SIZE 10
+
+// default round trip timeout
+#define DEFAULT_RTO 3000 // ms
+
 enum bandwidth_type_t {
 	payload_bandwidth, connect_overhead,
 	close_overhead, ack_overhead,
@@ -60,9 +72,9 @@ enum bandwidth_type_t {
 
 struct PACKED_ATTRIBUTE RST_Info {
 	PackedSockAddr addr;
-	uint32 connid;
-	uint16 ack_nr;
 	uint64 timestamp;
+	uint16 connid;
+	uint16 ack_nr;
 };
 
 // It's really important that we don't have duplicate keys in the hash table.
@@ -73,9 +85,9 @@ void UTP_FreeAll(struct UTPSocketHT *utp_sockets);
 
 struct UTPSocketKey {
 	PackedSockAddr addr;
-	uint32 recv_id;		 // "conn_seed", "conn_id"
+	uint16 recv_id;		 // "conn_seed", "conn_id"
 
-	UTPSocketKey(const PackedSockAddr& _addr, uint32 _recv_id) {
+	UTPSocketKey(const PackedSockAddr& _addr, uint16 _recv_id) {
 		memset(this, 0, sizeof(*this));
 		addr = _addr;
 		recv_id = _recv_id;
@@ -94,6 +106,9 @@ struct UTPSocketKeyData {
 	UTPSocketKey key;
 	UTPSocket *socket;
 	utp_link_t link;
+
+private:
+	UTPSocketKeyData();
 };
 
 #define UTP_SOCKET_BUCKETS 79
@@ -124,11 +139,15 @@ struct struct_utp_context {
 	size_t target_delay;
 	size_t opt_sndbuf;
 	size_t opt_rcvbuf;
+	size_t min_window;
+	size_t max_window_increase;
+	uint32 rto;
 	uint64 last_check;
 
 	struct_utp_context();
 	~struct_utp_context();
 
+	bool is_log_level_enabled(int level) const;
 	void log(int level, utp_socket *socket, char const *fmt, ...);
 
 	bool log_normal:1;	// log normal events?

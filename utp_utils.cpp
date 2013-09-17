@@ -108,18 +108,7 @@ static uint64 __GetMicroseconds()
 	return ret;
 }
 
-static inline uint64 UTP_GetMilliseconds()
-{
-	return GetTickCount();
-}
-
 #else //!WIN32
-
-static inline uint64 UTP_GetMicroseconds(void);
-static inline uint64 UTP_GetMilliseconds()
-{
-	return UTP_GetMicroseconds() / 1000;
-}
 
 #if defined(__APPLE__)
 
@@ -208,6 +197,11 @@ static inline uint64 UTP_GetMicroseconds()
 	return now;
 }
 
+static inline uint64 UTP_GetMilliseconds()
+{
+	return UTP_GetMicroseconds() / 1000;
+}
+
 #define ETHERNET_MTU 1500
 #define IPV4_HEADER_SIZE 20
 #define IPV6_HEADER_SIZE 40
@@ -241,14 +235,14 @@ uint64 utp_default_get_udp_overhead(utp_callback_arguments *args) {
 	return (args->address->sa_family == AF_INET6) ? UDP_TEREDO_OVERHEAD : UDP_IPV4_OVERHEAD;
 }
 
-uint64 utp_default_get_random(utp_callback_arguments *args) {
+uint64 utp_default_get_random(utp_callback_arguments *) {
 	return rand();
 }
 
-uint64 utp_default_get_milliseconds(utp_callback_arguments *args) {
+uint64 utp_default_get_milliseconds(utp_callback_arguments *) {
 	return UTP_GetMilliseconds();
 }
 
-uint64 utp_default_get_microseconds(utp_callback_arguments *args) {
+uint64 utp_default_get_microseconds(utp_callback_arguments *) {
 	return UTP_GetMicroseconds();
 }
