@@ -2,7 +2,7 @@
 Copyright (c) 2010 BitTorrent, Inc.
 
 uTP is a TCP-like implementation of [LEDBAT][ledbat] documented as a BitTorrent
-extension in [BEP-29][bep29]. uTP provides provides reliable, ordered delivery
+extension in [BEP-29][bep29]. uTP provides reliable, ordered delivery
 while maintaining minimum extra delay. It is implemented on top of UDP to be
 cross-platform and functional today. As a result, uTP is the primary transport
 for uTorrent peer-to-peer connections.
