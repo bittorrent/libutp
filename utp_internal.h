@@ -119,6 +119,7 @@ struct struct_utp_context {
 	utp_context_stats context_stats;
 	UTPSocket *last_utp_socket;
 	Array<UTPSocket*> ack_sockets;
+	Array<UTPSocket*> writable_sockets;
 	Array<RST_Info> rst_info;
 	UTPSocketHT *utp_sockets;
 	size_t target_delay;
