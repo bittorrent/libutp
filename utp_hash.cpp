@@ -237,3 +237,8 @@ void *utp_hash_iterate(utp_hash_t *hash, utp_hash_iterator_t *iter)
 	iter->elem = *ptr_to_link(elemp);
 	return elemp;
 }
+
+void utp_hash_free_mem(utp_hash_t* hash)
+{
+	free(hash);
+}
