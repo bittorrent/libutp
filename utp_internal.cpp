@@ -585,10 +585,10 @@ struct UTPSocket {
 	// If we can, decay max window, returns true if we actually did so
 	void maybe_decay_win(uint64 current_ms)
 	{
-		if (can_decay_win(current_ms)) {
+		if (can_decay_win((int32)current_ms)) {
 			// TCP uses 0.5
 			max_window = (size_t)(max_window * .5);
-			last_rwin_decay = current_ms;
+			last_rwin_decay = (int32)current_ms;
 			if (max_window < MIN_WINDOW_SIZE)
 				max_window = MIN_WINDOW_SIZE;
 			slow_start = false;
@@ -654,7 +654,7 @@ void removeSocketFromAckList(UTPSocket *conn)
 	{
 		UTPSocket *last = conn->ctx->ack_sockets[conn->ctx->ack_sockets.GetCount() - 1];
 
-		assert(last->ida < conn->ctx->ack_sockets.GetCount());
+		assert(last->ida < (int)(conn->ctx->ack_sockets.GetCount()));
 		assert(conn->ctx->ack_sockets[last->ida] == last);
 		last->ida = conn->ida;
 		conn->ctx->ack_sockets[conn->ida] = last;
@@ -867,7 +867,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 	bool use_as_mtu_probe = false;
 
 	// TODO: this is subject to nasty wrapping issues! Below as well
- 	if (mtu_discover_time < cur_time) {
+ 	if (mtu_discover_time < (uint64)cur_time) {
 		// it's time to reset our MTU assupmtions
 		// and trigger a new search
 		mtu_reset();
@@ -910,7 +910,7 @@ bool UTPSocket::is_full(int bytes)
 {
 	size_t packet_size = get_packet_size();
 	if (bytes < 0) bytes = packet_size;
-	else if (bytes > packet_size) bytes = packet_size;
+	else if (bytes > (int)packet_size) bytes = (int)packet_size;
 	size_t max_send = min(max_window, opt_sndbuf, max_window_user);
 
 	// subtract one to save space for the FIN packet
@@ -1177,7 +1177,7 @@ void UTPSocket::check_timeouts()
 
 				int packet_size = get_packet_size();
 
-				if (cur_window_packets == 0 && max_window > packet_size) {
+				if ((cur_window_packets == 0) && ((int)max_window > packet_size)) {
 					// we don't have any packets in-flight, even though
 					// we could. This implies that the connection is just
 					// idling. No need to be aggressive about resetting the
@@ -1664,10 +1664,10 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32 actual_delay, int64 mi
 		scaled_gain = 0;
 	}
 
-	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE)?MIN_WINDOW_SIZE:max_window + scaled_gain;
+	size_t ledbat_cwnd = (max_window + scaled_gain < MIN_WINDOW_SIZE) ? MIN_WINDOW_SIZE : (size_t)(max_window + scaled_gain);
 
 	if (slow_start) {
-		size_t ss_cwnd = max_window + window_factor*get_packet_size();
+		size_t ss_cwnd = (size_t)(max_window + window_factor*get_packet_size());
 		if (ss_cwnd > ssthresh) {
 			slow_start = false;
 		} else if (our_delay > target*0.9) {
@@ -2006,7 +2006,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 			assert(conn->current_delay_sum / conn->current_delay_samples < INT_MAX);
 			assert(conn->current_delay_sum / conn->current_delay_samples > -INT_MAX);
 			// write the new average
-			conn->average_delay = conn->current_delay_sum / conn->current_delay_samples;
+			conn->average_delay = (int32)(conn->current_delay_sum / conn->current_delay_samples);
 			// each slot represents 5 seconds
 			conn->average_sample_time += 5000;
 
@@ -2079,7 +2079,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// compensate
 	assert(min_rtt >= 0);
 	if (int64(conn->our_hist.get_value()) > min_rtt) {
-		conn->our_hist.shift(conn->our_hist.get_value() - min_rtt);
+		conn->our_hist.shift((uint32)(conn->our_hist.get_value() - min_rtt));
 	}
 
 	// only apply the congestion controller on acks
@@ -3278,7 +3278,7 @@ int utp_get_delays(UTPSocket *conn, uint32 *ours, uint32 *theirs, uint32 *age)
 
 	if (ours)   *ours   = conn->our_hist.get_value();
 	if (theirs) *theirs = conn->their_hist.get_value();
-	if (age)    *age    = conn->ctx->current_ms - conn->last_measured_delay;
+	if (age)    *age    = (uint32)(conn->ctx->current_ms - conn->last_measured_delay);
 	return 0;
 }
 
