@@ -126,13 +126,13 @@ cstr PackedSockAddr::fmt(str s, size_t len) const
 	const byte family = get_family();
 	str i;
 	if (family == AF_INET) {
-		inet_ntop(family, (uint32*)&_sin4, s, len);
+                libutp::inet_ntop(family, (uint32*)&_sin4, s, len);
 		i = s;
 		while (*++i) {}
 	} else {
 		i = s;
 		*i++ = '[';
-		inet_ntop(family, (in6_addr*)&_in._in6addr, i, len-1);
+		libutp::inet_ntop(family, (in6_addr*)&_in._in6addr, i, len-1);
 		while (*++i) {}
 		*i++ = ']';
 	}
