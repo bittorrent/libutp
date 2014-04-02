@@ -23,6 +23,8 @@
 #include "utp_hash.h"
 #include "utp_types.h"
 
+#define LIBUTP_HASH_UNUSED ((utp_link_t)-1)
+
 #ifdef STRICT_ALIGN
 inline uint32 Read32(const void *p)
 {
@@ -70,7 +72,7 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	memset( hash, 0, size );
 
 	for (int i = 0; i < N + 1; ++i)
-		hash->inits[i] = HASH_UNUSED;
+		hash->inits[i] = LIBUTP_HASH_UNUSED;
 	hash->N = N;
 	hash->K = key_size;
 	hash->E = total_size;
@@ -79,7 +81,7 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	hash->allocated = initial;
 	hash->count = 0;
 	hash->used = 0;
-	hash->free = HASH_UNUSED;
+	hash->free = LIBUTP_HASH_UNUSED;
 	return hash;
 }
 
@@ -127,7 +129,7 @@ void *utp_hash_lookup(utp_hash_t *hash, const void *key)
 	byte *bep = get_bep(hash);
 
 	utp_link_t cur = hash->inits[idx];
-	while (cur != HASH_UNUSED) {
+	while (cur != LIBUTP_HASH_UNUSED) {
 		byte *key2 = bep + (cur * hash->E);
 		if (COMPARE(hash, (byte*)key, key2, hash->K))
 			return key2;
@@ -148,14 +150,14 @@ void *utp_hash_add(utp_hash_t **hashp, const void *key)
 	utp_hash_t *hash = *hashp;
 	utp_link_t idx = utp_hash_mkidx(hash, key);
 
-	if ((elem=hash->free) == HASH_UNUSED) {
+	if ((elem=hash->free) == LIBUTP_HASH_UNUSED) {
 		utp_link_t all = hash->allocated;
 		if (hash->used == all) {
 			utp_hash_t *nhash;
-			if (all <= (HASH_UNUSED/2)) {
+			if (all <= (LIBUTP_HASH_UNUSED/2)) {
 				all *= 2;
-			} else if (all != HASH_UNUSED) {
-				all  = HASH_UNUSED;
+			} else if (all != LIBUTP_HASH_UNUSED) {
+				all  = LIBUTP_HASH_UNUSED;
 			} else {
 				// too many items! can't grow!
 				assert(0);
@@ -199,7 +201,7 @@ void *utp_hash_del(utp_hash_t *hash, const void *key)
 
 	utp_link_t *curp = &hash->inits[idx];
 	utp_link_t cur;
-	while ((cur=*curp) != HASH_UNUSED) {
+	while ((cur=*curp) != LIBUTP_HASH_UNUSED) {
 		byte *key2 = bep + (cur * hash->E);
 		if (COMPARE(hash,(byte*)key,(byte*)key2, hash->K )) {
 			// found an item that matched. unlink it
@@ -220,13 +222,13 @@ void *utp_hash_iterate(utp_hash_t *hash, utp_hash_iterator_t *iter)
 {
 	utp_link_t elem;
 
-	if ((elem=iter->elem) == HASH_UNUSED) {
+	if ((elem=iter->elem) == LIBUTP_HASH_UNUSED) {
 		// Find a bucket with an element
 		utp_link_t buck = iter->bucket + 1;
 		for(;;) {
 			if (buck >= hash->N)
 				return NULL;
-			if ((elem = hash->inits[buck]) != HASH_UNUSED)
+			if ((elem = hash->inits[buck]) != LIBUTP_HASH_UNUSED)
 				break;
 			buck++;
 		}

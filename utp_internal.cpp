@@ -430,7 +430,7 @@ struct UTPSocket {
 	size_t max_window_user;
 	CONN_STATE state;
 	// TickCount when we last decayed window (wraps)
-	int32 last_rwin_decay;
+	int64 last_rwin_decay;
 
 	// the sequence number of the FIN packet. This field is only set
 	// when we have received a FIN, and the flag field has the FIN flag set.
@@ -577,18 +577,18 @@ struct UTPSocket {
 	// XXX this breaks when spaced by > INT_MAX/2, which is 49
 	// days; the failure mode in that case is we do an extra decay
 	// or fail to do one when we really shouldn't.
-	bool can_decay_win(int32 msec) const
+	bool can_decay_win(int64 msec) const
 	{
-		return msec - last_rwin_decay >= MAX_WINDOW_DECAY;
+                return (msec - last_rwin_decay) >= MAX_WINDOW_DECAY;
 	}
 
 	// If we can, decay max window, returns true if we actually did so
 	void maybe_decay_win(uint64 current_ms)
 	{
-		if (can_decay_win((int32)current_ms)) {
+		if (can_decay_win(current_ms)) {
 			// TCP uses 0.5
 			max_window = (size_t)(max_window * .5);
-			last_rwin_decay = (int32)current_ms;
+			last_rwin_decay = current_ms;
 			if (max_window < MIN_WINDOW_SIZE)
 				max_window = MIN_WINDOW_SIZE;
 			slow_start = false;
@@ -2493,7 +2493,7 @@ void utp_initialize_socket(	utp_socket *conn,
 	conn->last_sent_packet		= conn->ctx->current_ms;
 	conn->last_measured_delay	= conn->ctx->current_ms + 0x70000000;
 	conn->average_sample_time	= conn->ctx->current_ms + 5000;
-	conn->last_rwin_decay		= int32(conn->ctx->current_ms) - MAX_WINDOW_DECAY;
+	conn->last_rwin_decay		= conn->ctx->current_ms - MAX_WINDOW_DECAY;
 
 	conn->our_hist.clear(conn->ctx->current_ms);
 	conn->their_hist.clear(conn->ctx->current_ms);
