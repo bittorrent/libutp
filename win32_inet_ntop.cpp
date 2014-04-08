@@ -26,8 +26,9 @@
 #include <ws2tcpip.h>
 #include "win32_inet_ntop.h"
 
-#if ((!defined NTDDI_VERSION) || (NTDDI_VERSION < NTDDI_LONGHORN))
-const char *inet_ntop(int af, const void *src, char *dest, size_t length)
+
+//######################################################################
+const char *libutp::inet_ntop(int af, const void *src, char *dest, size_t length)
 {
 	if (af != AF_INET && af != AF_INET6)
 	{
@@ -68,7 +69,8 @@ const char *inet_ntop(int af, const void *src, char *dest, size_t length)
 	return result == SOCKET_ERROR ? NULL : dest;
 }
 
-int inet_pton(int af, const char* src, void* dest)
+//######################################################################
+int libutp::inet_pton(int af, const char* src, void* dest)
 {
 	if (af != AF_INET && af != AF_INET6)
 	{
@@ -104,4 +106,3 @@ int inet_pton(int af, const char* src, void* dest)
 
 	return result == SOCKET_ERROR ? -1 : 1;
 }
-#endif

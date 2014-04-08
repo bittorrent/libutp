@@ -31,7 +31,6 @@
 
 // TODO: make utp_link_t a template parameter to HashTable
 typedef uint32 utp_link_t;
-#define HASH_UNUSED ((utp_link_t)-1)
 
 #ifdef _MSC_VER
 // Silence the warning about the C99-compliant zero-length array at the end of the structure

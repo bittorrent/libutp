@@ -33,7 +33,7 @@ int utp_call_on_firewall(utp_context *ctx, const struct sockaddr *address, sockl
 	args.socket = NULL;
 	args.address = address;
 	args.address_len = address_len;
-	return ctx->callbacks[UTP_ON_FIREWALL](&args);
+	return (int)ctx->callbacks[UTP_ON_FIREWALL](&args);
 }
 
 void utp_call_on_accept(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
@@ -125,7 +125,7 @@ uint16 utp_call_get_udp_mtu(utp_context *ctx, utp_socket *socket, const struct s
 	args.socket = socket;
 	args.address = address;
 	args.address_len = address_len;
-	return ctx->callbacks[UTP_GET_UDP_MTU](&args);
+	return (uint16)ctx->callbacks[UTP_GET_UDP_MTU](&args);
 }
 
 uint16 utp_call_get_udp_overhead(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
@@ -137,7 +137,7 @@ uint16 utp_call_get_udp_overhead(utp_context *ctx, utp_socket *socket, const str
 	args.socket = socket;
 	args.address = address;
 	args.address_len = address_len;
-	return ctx->callbacks[UTP_GET_UDP_OVERHEAD](&args);
+	return (uint16)ctx->callbacks[UTP_GET_UDP_OVERHEAD](&args);
 }
 
 uint64 utp_call_get_milliseconds(utp_context *ctx, utp_socket *socket)
@@ -167,7 +167,7 @@ uint32 utp_call_get_random(utp_context *ctx, utp_socket *socket)
 	args.callback_type = UTP_GET_RANDOM;
 	args.context = ctx;
 	args.socket = socket;
-	return ctx->callbacks[UTP_GET_RANDOM](&args);
+	return (uint32)ctx->callbacks[UTP_GET_RANDOM](&args);
 }
 
 size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *socket)
@@ -177,7 +177,7 @@ size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *socket)
 	args.callback_type = UTP_GET_READ_BUFFER_SIZE;
 	args.context = ctx;
 	args.socket = socket;
-	return ctx->callbacks[UTP_GET_READ_BUFFER_SIZE](&args);
+	return (size_t)ctx->callbacks[UTP_GET_READ_BUFFER_SIZE](&args);
 }
 
 void utp_call_log(utp_context *ctx, utp_socket *socket, const byte *buf)
