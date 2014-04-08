@@ -36,12 +36,12 @@
 
 byte PackedSockAddr::get_family() const
 {
-	#if defined(__WINE__) || defined(__sh__)
+	#if defined(__sh__)
 		return ((_sin6d[0] == 0) && (_sin6d[1] == 0) && (_sin6d[2] == htonl(0xffff)) != 0) ?
 			AF_INET : AF_INET6;
 	#else
 		return (IN6_IS_ADDR_V4MAPPED(&_in._in6addr) != 0) ? AF_INET : AF_INET6;
-	#endif // defined(__WINE__) || defined(__sh__)
+	#endif // defined(__sh__)
 }
 
 bool PackedSockAddr::operator==(const PackedSockAddr& rhs) const
