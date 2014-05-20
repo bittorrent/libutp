@@ -58,7 +58,7 @@
     <ClCompile Include="utp_utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="win32_inet_ntop.cpp">
+    <ClCompile Include="libutp_inet_ntop.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
