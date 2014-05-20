@@ -32,10 +32,10 @@
     <ClInclude Include="utp_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="win32_inet_ntop.h">
+    <ClInclude Include="utp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utp.h">
+    <ClInclude Include="libutp_inet_ntop.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

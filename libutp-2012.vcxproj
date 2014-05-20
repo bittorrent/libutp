@@ -43,7 +43,7 @@
     <ClInclude Include="utp_packedsockaddr.h" />
     <ClInclude Include="utp_utils.h" />
     <ClInclude Include="utp_types.h" />
-    <ClInclude Include="win32_inet_ntop.h" />
+    <ClInclude Include="libutp_inet_ntop.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="utp_api.cpp" />

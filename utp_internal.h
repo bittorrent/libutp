@@ -46,7 +46,7 @@ enum bandwidth_type_t {
 
 #ifdef WIN32
 	#ifdef _MSC_VER
-		#include "win32_inet_ntop.h"
+		#include "libutp_inet_ntop.h"
 	#endif
 
 	// newer versions of MSVC define these in errno.h
