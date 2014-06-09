@@ -23,7 +23,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <ExceptionHandling>false</ExceptionHandling>
       <StringPooling>true</StringPooling>
-      <CallingConvention>FastCall</CallingConvention>
+      <CallingConvention>StdCall</CallingConvention>
       <CompileAs>Default</CompileAs>
       <CompileAsManaged>false</CompileAsManaged>
       <PreprocessorDefinitions>NDEBUG;WIN32;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
