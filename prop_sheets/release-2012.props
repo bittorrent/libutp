@@ -27,7 +27,7 @@
       <CallingConvention>StdCall</CallingConvention>
       <CompileAs>Default</CompileAs>
       <CompileAsManaged>false</CompileAsManaged>
-      <PreprocessorDefinitions>NDEBUG;WIN32;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PrecompiledHeaderOutputFile>c:\temp\$(ProjectName)-$(ConfigurationName)-$(PlatformName)-master.pch</PrecompiledHeaderOutputFile>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>

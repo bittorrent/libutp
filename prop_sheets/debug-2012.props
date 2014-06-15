@@ -11,7 +11,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>_DEBUG;WIN32;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>false</ExceptionHandling>
       <StringPooling>false</StringPooling>
       <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
