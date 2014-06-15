@@ -25,12 +25,12 @@
 #include "utp.h"
 #include "utp_types.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
-#else //!WIN32
+#else //!_WIN32
 	#include <time.h>
 	#include <sys/time.h>		// Linux needs both time.h and sys/time.h
 #endif
@@ -41,7 +41,7 @@
 
 #include "utp_utils.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 
 typedef ULONGLONG (WINAPI GetTickCount64Proc)(void);
 static GetTickCount64Proc *pt2GetTickCount64;
@@ -113,7 +113,7 @@ static inline uint64 UTP_GetMilliseconds()
 	return GetTickCount();
 }
 
-#else //!WIN32
+#else //!_WIN32
 
 static inline uint64 UTP_GetMicroseconds(void);
 static inline uint64 UTP_GetMilliseconds()
@@ -182,7 +182,7 @@ static uint64_t __GetMicroseconds()
 
 #endif //!__APPLE__
 
-#endif //!WIN32
+#endif //!_WIN32
 
 /*
  * Whew.  Okay.  After that #ifdef maze above, we now know we have a working
