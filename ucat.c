@@ -37,6 +37,23 @@
 #include <poll.h>
 #include <netdb.h>
 #include <signal.h>
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) ||	\
+    defined(__NetBSD__) || defined(__DragonFlyBSD__) || defined(__APPLE__)
+#	define	HAS_ERR_H
+#endif
+#ifndef __GNUC__
+#	define __printflike()
+#endif
+
+#ifdef HAS_ERR_H
+#	include <err.h>
+#	define die(FMT, ...)	errx(1, FMT, ##__VA_ARGS__)
+#	define pdie(FMT, ...)	err(1, FMT, ##__VA_ARGS__)
+#else
+static void die(const char *fmt, ...) __printflike(1, 2);
+static void pdie(const char *fmt, ...) __printflike(1, 2);
+#endif
+static void debug(const char *fmt, ...) __printflike(1, 2);
 
 #ifdef __linux__
 	#include <linux/errqueue.h>
@@ -47,7 +64,7 @@
 
 // options
 int o_debug;
-char *o_local_address,  *o_local_port,
+const char *o_local_address,  *o_local_port,
 	 *o_remote_address, *o_remote_port;
 int o_listen;
 int o_buf_size = 4096;
@@ -61,7 +78,9 @@ int buf_len = 0;
 unsigned char *buf, *p;
 int eof_flag, quit_flag, exit_code;
 
-void die(char *fmt, ...)
+#ifndef HAS_ERR_H
+static void
+die(const char *fmt, ...)
 {
 	va_list ap;
 	fflush(stdout);
@@ -70,8 +89,10 @@ void die(char *fmt, ...)
 	va_end(ap);
 	exit(1);
 }
+#endif
 
-void debug(char *fmt, ...)
+static void
+debug(const char *fmt, ...)
 {
 	va_list ap;
 	if (o_debug) {
@@ -84,15 +105,19 @@ void debug(char *fmt, ...)
 	}
 }
 
-void pdie(char *err)
+#ifndef HAS_ERR_H
+static void
+pdie(const char *err)
 {
 	debug("errno %d\n", errno);
 	fflush(stdout);
 	perror(err);
 	exit(1);
 }
+#endif
 
-void hexdump(const void *p, size_t len)
+static void
+hexdump(const unsigned char *p, size_t len)
 {
     int count = 1;
 
@@ -100,7 +125,7 @@ void hexdump(const void *p, size_t len)
         if (count == 1)
             fprintf(stderr, "    %p: ", p);
 
-        fprintf(stderr, " %02x", *(unsigned char*)p++ & 0xff);
+        fprintf(stderr, " %02x", *p++ & 0xff);
 
         if (count++ == 16) {
             fprintf(stderr, "\n");
@@ -112,7 +137,8 @@ void hexdump(const void *p, size_t len)
         fprintf(stderr, "\n");
 }
 
-void handler(int number)
+static void
+handler(int number)
 {
 	debug("caught signal\n");
 	if (s)
@@ -121,7 +147,8 @@ void handler(int number)
 	exit_code++;
 }
 
-void write_data(void)
+static void
+write_data(void)
 {
 	if (! s)
 		goto out;
@@ -143,7 +170,7 @@ void write_data(void)
 				buf_len = 0;
 			}
 		else
-			debug("wrote %zd bytes; %d bytes left in buffer\n", sent, buf+buf_len-p);
+			debug("wrote %zd bytes; %zd bytes left in buffer\n", sent, buf+buf_len-p);
 	}
 
 out:
@@ -158,7 +185,8 @@ out:
 	}
 }
 
-uint64 callback_on_read(utp_callback_arguments *a)
+static uint64
+callback_on_read(utp_callback_arguments *a)
 {
 	const unsigned char *p;
 	ssize_t len, left;
@@ -170,13 +198,14 @@ uint64 callback_on_read(utp_callback_arguments *a)
 		len = write(STDOUT_FILENO, p, left);
 		left -= len;
 		p += len;
-		debug("Wrote %d bytes, %d left\n", len, left);
+		debug("Wrote %zd bytes, %zd left\n", len, left);
 	}
 	utp_read_drained(a->socket);
 	return 0;
 }
 
-uint64 callback_on_firewall(utp_callback_arguments *a)
+static uint64
+callback_on_firewall(utp_callback_arguments *a)
 {
 	if (! o_listen) {
 		debug("Firewalling unexpected inbound connection in non-listen mode\n");
@@ -192,7 +221,8 @@ uint64 callback_on_firewall(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_accept(utp_callback_arguments *a)
+static uint64
+callback_on_accept(utp_callback_arguments *a)
 {
 	assert(!s);
 	s = a->socket;
@@ -201,7 +231,8 @@ uint64 callback_on_accept(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_error(utp_callback_arguments *a)
+static uint64
+callback_on_error(utp_callback_arguments *a)
 {
 	fprintf(stderr, "Error: %s\n", utp_error_code_names[a->error_code]);
 	utp_close(s);
@@ -211,7 +242,8 @@ uint64 callback_on_error(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_state_change(utp_callback_arguments *a)
+static uint64
+callback_on_state_change(utp_callback_arguments *a)
 {
 	debug("state %d: %s\n", a->state, utp_state_names[a->state]);
 	utp_socket_stats *stats;
@@ -233,8 +265,8 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 			stats = utp_get_stats(a->socket);
 			if (stats) {
 				debug("Socket Statistics:\n");
-				debug("    Bytes sent:          %d\n", stats->nbytes_xmit);
-				debug("    Bytes received:      %d\n", stats->nbytes_recv);
+				debug("    Bytes sent:          %ld\n", stats->nbytes_xmit);
+				debug("    Bytes received:      %ld\n", stats->nbytes_recv);
 				debug("    Packets received:    %d\n", stats->nrecv);
 				debug("    Packets sent:        %d\n", stats->nxmit);
 				debug("    Duplicate receives:  %d\n", stats->nduprecv);
@@ -254,7 +286,8 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_sendto(utp_callback_arguments *a)
+static uint64
+callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
@@ -268,13 +301,15 @@ uint64 callback_sendto(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_log(utp_callback_arguments *a)
+static uint64
+callback_log(utp_callback_arguments *a)
 {
 	fprintf(stderr, "log: %s\n", a->buf);
 	return 0;
 }
 
-void setup(void)
+static void
+setup(void)
 {
 	struct addrinfo hints, *res;
 	struct sockaddr_in sin, *sinp;
@@ -357,7 +392,8 @@ void setup(void)
 }
 
 #ifdef __linux__
-void handle_icmp()
+static void
+handle_icmp()
 {
 	while (1) {
 		unsigned char vec_buf[4096], ancillary_buf[4096];
@@ -472,7 +508,8 @@ void handle_icmp()
 }
 #endif
 
-void network_loop(void)
+static void
+network_loop(void)
 {
 	unsigned char socket_data[4096];
 	struct sockaddr_in src_addr;
@@ -511,7 +548,7 @@ void network_loop(void)
 			}
 			else {
 				buf_len += len;
-				debug("Read %d bytes, buffer now %d bytes long\n", len, buf_len);
+				debug("Read %zd bytes, buffer now %d bytes long\n", len, buf_len);
 			}
 			write_data();
 		}
@@ -546,7 +583,8 @@ void network_loop(void)
 	utp_check_timeouts(ctx);
 }
 
-void usage(char *name)
+static void
+usage(char *name)
 {
 	fprintf(stderr, "\nUsage:\n");
 	fprintf(stderr, "    %s [options] <destination-IP> <destination-port>\n", name);
@@ -564,7 +602,8 @@ void usage(char *name)
 	exit(1);
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
 	int i;
 
