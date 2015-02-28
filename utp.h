@@ -84,14 +84,15 @@ enum {
 	UTP_SENDTO,
 
 	// context and socket options that may be set/queried
-    UTP_LOG_NORMAL,
-    UTP_LOG_MTU,
-    UTP_LOG_DEBUG,
+	UTP_LOG_NORMAL,
+	UTP_LOG_MTU,
+	UTP_LOG_DEBUG,
 	UTP_SNDBUF,
 	UTP_RCVBUF,
 	UTP_TARGET_DELAY,
+	UTP_CLOSE_REASON,
 
-	UTP_ARRAY_SIZE,	// must be last
+	UTP_ARRAY_SIZE, // must be last
 };
 
 extern const char *utp_callback_names[];

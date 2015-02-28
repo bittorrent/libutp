@@ -432,6 +432,9 @@ struct UTPSocket {
 	// TickCount when we last decayed window (wraps)
 	int64 last_rwin_decay;
 
+	// close reason to send to peer.
+	uint16 close_reason;
+
 	// the sequence number of the FIN packet. This field is only set
 	// when we have received a FIN, and the flag field has the FIN flag set.
 	// it is used to know when it is safe to destroy the socket, we must have
@@ -488,9 +491,6 @@ struct UTPSocket {
 
 	DelayHist our_hist;
 	DelayHist their_hist;
-
-	// extension bytes from SYN packet
-	byte extensions[8];
 
 	// MTU Discovery
 	// time when we should restart the MTU discovery
@@ -963,6 +963,17 @@ bool UTPSocket::flush_packets()
 	return false;
 }
 
+// This header is defined in BEP 45.
+void write_close_reason_header(char* buf, uint16 close_reason)
+{
+	buf[0] = 0; // next extension (none)
+	buf[1] = 4; // length (4 bytes)
+	buf[2] = 0; // reserved
+	buf[3] = 0;
+	buf[4] = close_reason >> 8;
+	buf[5] = close_reason & 0xf;
+}
+
 // @payload: number of bytes to send
 // @flags: either ST_DATA, or ST_FIN
 // @iovec: base address of iovec array
@@ -989,7 +1000,12 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 			pkt = (OutgoingPacket*)outbuf.get(seq_nr - 1);
 		}
 
-		const size_t header_size = get_header_size();
+		// if close reason is set, include it in the packet header. Add 6 bytes.
+		// 4 for the field itself and 1 byte for the extension id and 1
+		// byte for length.
+		const size_t header_size = get_header_size()
+			+ ((close_reason != 0) ? 6 : 0);
+
 		bool append = true;
 
 		// if there's any room left in the last packet in the window
@@ -1055,10 +1071,16 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 		PacketFormatV1* p1 = (PacketFormatV1*)pkt->data;
 		p1->set_version(1);
 		p1->set_type(flags);
-		p1->ext = 0;
+		// if we have a close reason, indicate we have the close reason
+		// header too.
+		if (close_reason != 0) p1->ext = 3;
+		else p1->ext = 0;
 		p1->connid = conn_id_send;
 		p1->windowsize = (uint32)last_rcv_win;
 		p1->ack_nr = ack_nr;
+
+		write_close_reason_header((char*)pkt->data + sizeof(PacketFormatV1)
+			, close_reason);
 
 		if (append) {
 			// Remember the message in the outgoing queue.
@@ -1771,7 +1793,8 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	// TODO: maybe send a ST_RESET if we're in CS_RESET?
 
-	const byte *selack_ptr = NULL;
+	const byte* selack_ptr = NULL;
+	const byte* close_reason_ptr = NULL;
 
 	// Unpack UTP packet options
 	// Data pointer
@@ -1793,9 +1816,9 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 			if ((int)(packet_end - data) < 0 || (int)(packet_end - data) < data[-1]) {
 
-				#if UTP_DEBUG_LOGGING
-				conn->log(UTP_LOG_DEBUG, "Invalid len of extensions");
-				#endif
+#if UTP_DEBUG_LOGGING
+				conn->log(UTP_LOG_DEBUG, "Invalid len of extension header");
+#endif
 
 				return 0;
 			}
@@ -1804,22 +1827,16 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 			case 1: // Selective Acknowledgment
 				selack_ptr = data;
 				break;
-			case 2: // extension bits
-				if (data[-1] != 8) {
-
-					#if UTP_DEBUG_LOGGING
-					conn->log(UTP_LOG_DEBUG, "Invalid len of extension bits header");
-					#endif
-
-					return 0;
+			case 3: // close reason
+				// close reason must be 4 bytes. 2 bytes reserved
+				// and 2 bytes close reason.
+				// if the length of the extension is not 4, it's some other
+				// extension. Just ignore it.
+				if (data[-1] == 4) { 
+					// TODO: parse this and pass it to the upper layer
+					close_reason_ptr = data;
 				}
-				memcpy(conn->extensions, data, 8);
-
-				#if UTP_DEBUG_LOGGING
-				conn->log(UTP_LOG_DEBUG, "got extension bits:%02x%02x%02x%02x%02x%02x%02x%02x",
-					conn->extensions[0], conn->extensions[1], conn->extensions[2], conn->extensions[3],
-					conn->extensions[4], conn->extensions[5], conn->extensions[6], conn->extensions[7]);
-				#endif
+				break;
 			}
 			extension = data[-2];
 			data += data[-1];
@@ -2520,52 +2537,51 @@ utp_socket*	utp_create_socket(utp_context *ctx)
 
 	UTPSocket *conn = new UTPSocket; // TODO: UTPSocket should have a constructor
 
-	conn->state					= CS_UNINITIALIZED;
-	conn->ctx					= ctx;
-	conn->userdata				= NULL;
-	conn->reorder_count			= 0;
-	conn->duplicate_ack			= 0;
-	conn->timeout_seq_nr		= 0;
-	conn->last_rcv_win			= 0;
-	conn->got_fin				= false;
-	conn->fast_timeout			= false;
-	conn->rtt					= 0;
-	conn->retransmit_timeout	= 0;
-	conn->rto_timeout			= 0;
-	conn->zerowindow_time		= 0;
-	conn->average_delay			= 0;
-	conn->current_delay_samples	= 0;
-	conn->cur_window			= 0;
-	conn->eof_pkt				= 0;
-	conn->last_maxed_out_window	= 0;
-	conn->mtu_probe_seq			= 0;
-	conn->mtu_probe_size		= 0;
-	conn->current_delay_sum		= 0;
-	conn->average_delay_base	= 0;
-	conn->retransmit_count		= 0;
-	conn->rto					= 3000;
-	conn->rtt_var				= 800;
-	conn->seq_nr				= 1;
-	conn->ack_nr				= 0;
-	conn->max_window_user		= 255 * PACKET_SIZE;
-	conn->cur_window_packets	= 0;
-	conn->fast_resend_seq_nr	= conn->seq_nr;
-	conn->target_delay			= ctx->target_delay;
-	conn->reply_micro			= 0;
-	conn->opt_sndbuf			= ctx->opt_sndbuf;
-	conn->opt_rcvbuf			= ctx->opt_rcvbuf;
-	conn->slow_start			= true;
-	conn->ssthresh				= conn->opt_sndbuf;
-	conn->clock_drift			= 0;
-	conn->clock_drift_raw		= 0;
-	conn->outbuf.mask			= 15;
-	conn->inbuf.mask			= 15;
-	conn->outbuf.elements		= (void**)calloc(16, sizeof(void*));
-	conn->inbuf.elements		= (void**)calloc(16, sizeof(void*));
-	conn->ida					= -1;	// set the index of every new socket in ack_sockets to
-										// -1, which also means it is not in ack_sockets yet
-
-	memset(conn->extensions, 0, sizeof(conn->extensions));
+	conn->state                 = CS_UNINITIALIZED;
+	conn->ctx                   = ctx;
+	conn->userdata              = NULL;
+	conn->reorder_count         = 0;
+	conn->duplicate_ack         = 0;
+	conn->timeout_seq_nr        = 0;
+	conn->last_rcv_win          = 0;
+	conn->got_fin               = false;
+	conn->close_reason          = 0;
+	conn->fast_timeout          = false;
+	conn->rtt                   = 0;
+	conn->retransmit_timeout    = 0;
+	conn->rto_timeout           = 0;
+	conn->zerowindow_time       = 0;
+	conn->average_delay         = 0;
+	conn->current_delay_samples = 0;
+	conn->cur_window            = 0;
+	conn->eof_pkt               = 0;
+	conn->last_maxed_out_window = 0;
+	conn->mtu_probe_seq         = 0;
+	conn->mtu_probe_size        = 0;
+	conn->current_delay_sum     = 0;
+	conn->average_delay_base    = 0;
+	conn->retransmit_count      = 0;
+	conn->rto                   = 3000;
+	conn->rtt_var               = 800;
+	conn->seq_nr                = 1;
+	conn->ack_nr                = 0;
+	conn->max_window_user       = 255 * PACKET_SIZE;
+	conn->cur_window_packets    = 0;
+	conn->fast_resend_seq_nr    = conn->seq_nr;
+	conn->target_delay          = ctx->target_delay;
+	conn->reply_micro           = 0;
+	conn->opt_sndbuf            = ctx->opt_sndbuf;
+	conn->opt_rcvbuf            = ctx->opt_rcvbuf;
+	conn->slow_start            = true;
+	conn->ssthresh              = conn->opt_sndbuf;
+	conn->clock_drift           = 0;
+	conn->clock_drift_raw       = 0;
+	conn->outbuf.mask           = 15;
+	conn->inbuf.mask            = 15;
+	conn->outbuf.elements       = (void**)calloc(16, sizeof(void*));
+	conn->inbuf.elements        = (void**)calloc(16, sizeof(void*));
+	conn->ida                   = -1;   // set the index of every new socket in ack_sockets to
+	// -1, which also means it is not in ack_sockets yet
 
 	#ifdef _DEBUG
 	memset(&conn->_stats, 0, sizeof(utp_socket_stats));
@@ -2615,12 +2631,12 @@ int utp_context_get_option(utp_context *ctx, int opt)
 	if (!ctx) return -1;
 
 	switch (opt) {
-    	case UTP_LOG_NORMAL:	return ctx->log_normal ? 1 : 0;
-    	case UTP_LOG_MTU:		return ctx->log_mtu    ? 1 : 0;
-    	case UTP_LOG_DEBUG:		return ctx->log_debug  ? 1 : 0;
-    	case UTP_TARGET_DELAY:	return ctx->target_delay;
-		case UTP_SNDBUF:		return ctx->opt_sndbuf;
-		case UTP_RCVBUF:		return ctx->opt_rcvbuf;
+		case UTP_LOG_NORMAL: return ctx->log_normal ? 1 : 0;
+		case UTP_LOG_MTU: return ctx->log_mtu    ? 1 : 0;
+		case UTP_LOG_DEBUG: return ctx->log_debug  ? 1 : 0;
+		case UTP_TARGET_DELAY: return ctx->target_delay;
+		case UTP_SNDBUF: return ctx->opt_sndbuf;
+		case UTP_RCVBUF: return ctx->opt_rcvbuf;
 	}
 	return -1;
 }
@@ -2645,6 +2661,10 @@ int utp_setsockopt(UTPSocket* conn, int opt, int val)
 
 	case UTP_TARGET_DELAY:
 		conn->target_delay = val;
+		return 0;
+
+	case UTP_CLOSE_REASON:
+		conn->close_reason = val;
 		return 0;
 	}
 
