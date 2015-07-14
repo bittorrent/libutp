@@ -1766,6 +1766,27 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// mark receipt time
 	uint64 time = utp_call_get_microseconds(conn->ctx, conn);
 
+	// window packets size is used to calculate a minimum
+	// permissible range for received acks. connections with acks falling
+	// out of this range are dropped
+	const uint16 curr_window = max<uint16>(conn->cur_window_packets, 1);
+
+	// ignore packets whose ack_nr is invalid. This would imply a spoofed address
+	// or a malicious attempt to attach the uTP implementation.
+	// acking a packet that hasn't been sent yet!
+	// SYN packets have an exception, since there are no previous packets
+	if ((pk_flags != ST_SYN || conn->state != CS_CONNECTED) && 
+		(wrapping_compare_less(conn->seq_nr - 1, pk_ack_nr, ACK_NR_MASK)
+		|| wrapping_compare_less(pk_ack_nr, conn->seq_nr - 1 - curr_window, ACK_NR_MASK))) {
+#if UTP_DEBUG_LOGGING
+	conn->log(UTP_LOG_DEBUG, "Invalid ack_nr: %u. our seq_nr: %u last unacked: %u"
+	, pk_ack_nr, conn->seq_nr, (conn->seq_nr - conn->cur_window_packets) & ACK_NR_MASK);
+#endif
+		return 0;
+	}
+
+	
+
 	// RSTs are handled earlier, since the connid matches the send id not the recv id
 	assert(pk_flags != ST_RESET);
 
