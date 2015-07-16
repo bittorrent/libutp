@@ -1114,6 +1114,7 @@ void UTPSocket::check_timeouts()
 
 	switch (state) {
 	case CS_SYN_SENT:
+	case CS_SYN_RECV:
 	case CS_CONNECTED_FULL:
 	case CS_CONNECTED:
 	case CS_FIN_SENT: {
@@ -1157,6 +1158,16 @@ void UTPSocket::check_timeouts()
 			// Increase RTO
 			const uint new_timeout = ignore_loss ? retransmit_timeout : retransmit_timeout * 2;
 
+			// They initiated the connection but failed to respond before the rto. 
+			// A malicious client can also spoof the destination address of a ST_SYN bringing us to this state.
+			// Kill the connection and do not notify the upper layer
+			if (state == CS_SYN_RECV) {
+				state = CS_DESTROY;
+				utp_call_on_error(ctx, this, UTP_ETIMEDOUT);
+				return;
+			}
+
+			// We initiated the connection but the other side failed to respond before the rto
 			if (retransmit_count >= 4 || (state == CS_SYN_SENT && retransmit_count >= 2)) {
 				// 4 consecutive transmissions have timed out. Kill it. If we
 				// haven't even connected yet, give up after only 2 consecutive
@@ -3334,7 +3345,8 @@ void utp_close(UTPSocket *conn)
 	case CS_GOT_FIN:
 		conn->state = CS_DESTROY_DELAY;
 		break;
-
+	case CS_SYN_RECV:
+		// fall through
 	default:
 		conn->state = CS_DESTROY;
 		break;
