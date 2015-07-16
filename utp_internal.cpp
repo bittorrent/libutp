@@ -156,6 +156,7 @@ enum CONN_STATE {
 	CS_UNINITIALIZED = 0,
 	CS_IDLE,
 	CS_SYN_SENT,
+	CS_SYN_RECV,
 	CS_CONNECTED,
 	CS_CONNECTED_FULL,
 	CS_GOT_FIN,
@@ -166,7 +167,7 @@ enum CONN_STATE {
 };
 
 static const cstr statenames[] = {
-	"UNINITIALIZED", "IDLE","SYN_SENT","CONNECTED","CONNECTED_FULL","GOT_FIN","DESTROY_DELAY","FIN_SENT","RESET","DESTROY"
+	"UNINITIALIZED", "IDLE","SYN_SENT", "SYN_RECV", "CONNECTED","CONNECTED_FULL","GOT_FIN","DESTROY_DELAY","FIN_SENT","RESET","DESTROY"
 };
 
 struct OutgoingPacket {
@@ -1785,8 +1786,6 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		return 0;
 	}
 
-	
-
 	// RSTs are handled earlier, since the connid matches the send id not the recv id
 	assert(pk_flags != ST_RESET);
 
@@ -2122,9 +2121,11 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 		// Respond to connect message
 		// Switch to CONNECTED state.
-		if (conn->state == CS_SYN_SENT) {
+		// If this is an ack and we're in still handshaking
+		// transition over to the connected state.
+		if (pk_flags == ST_STATE && (conn->state == CS_SYN_RECV || conn->state == CS_SYN_SENT))	{
 			conn->state = CS_CONNECTED;
-
+		
 			// If the user has defined the ON_CONNECT callback, use that to
 			// notify the user that the socket is now connected.  If ON_CONNECT
 			// has not been defined, notify the user via ON_STATE_CHANGE.
@@ -2946,7 +2947,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 		conn->ack_nr = seq_nr;
 		conn->seq_nr = utp_call_get_random(ctx, NULL);
 		conn->fast_resend_seq_nr = conn->seq_nr;
-		conn->state = CS_CONNECTED;
+		conn->state = CS_SYN_RECV;
 
 		const size_t read = utp_process_incoming(conn, buffer, len, true);
 
