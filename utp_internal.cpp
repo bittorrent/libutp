@@ -1248,7 +1248,7 @@ void UTPSocket::check_timeouts()
 			utp_call_on_state_change(this->ctx, this, UTP_STATE_WRITABLE);
 		}
 
-		if (state >= CS_CONNECTED && state <= CS_FIN_SENT) {
+		if (state >= CS_CONNECTED && state < CS_GOT_FIN) {
 			if ((int)(ctx->current_ms - last_sent_packet) >= KEEPALIVE_INTERVAL) {
 				send_keep_alive();
 			}
