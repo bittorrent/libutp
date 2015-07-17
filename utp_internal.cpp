@@ -62,6 +62,11 @@
 // that hasn't been acked yet
 #define DUPLICATE_ACKS_BEFORE_RESEND 3
 
+// Allow a reception window of at least 3 ack_nrs behind seq_nr
+// A non-SYN packet with an ack_nr difference greater than this is
+// considered suspicious and ignored
+#define ACK_NR_ALLOWED_WINDOW DUPLICATE_ACKS_BEFORE_RESEND
+
 #define RST_INFO_TIMEOUT 10000
 #define RST_INFO_LIMIT 1000
 // 29 seconds determined from measuring many home NAT devices
@@ -1781,7 +1786,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// window packets size is used to calculate a minimum
 	// permissible range for received acks. connections with acks falling
 	// out of this range are dropped
-	const uint16 curr_window = max<uint16>(conn->cur_window_packets, 1);
+	const uint16 curr_window = max<uint16>(conn->cur_window_packets + ACK_NR_ALLOWED_WINDOW, ACK_NR_ALLOWED_WINDOW);
 
 	// ignore packets whose ack_nr is invalid. This would imply a spoofed address
 	// or a malicious attempt to attach the uTP implementation.
