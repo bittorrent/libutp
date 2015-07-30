@@ -1792,7 +1792,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// or a malicious attempt to attach the uTP implementation.
 	// acking a packet that hasn't been sent yet!
 	// SYN packets have an exception, since there are no previous packets
-	if ((pk_flags != ST_SYN || conn->state != CS_CONNECTED) && 
+	if ((pk_flags != ST_SYN || conn->state != CS_SYN_RECV) && 
 		(wrapping_compare_less(conn->seq_nr - 1, pk_ack_nr, ACK_NR_MASK)
 		|| wrapping_compare_less(pk_ack_nr, conn->seq_nr - 1 - curr_window, ACK_NR_MASK))) {
 #if UTP_DEBUG_LOGGING
@@ -2139,7 +2139,14 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		// Switch to CONNECTED state.
 		// If this is an ack and we're in still handshaking
 		// transition over to the connected state.
-		if (pk_flags == ST_STATE && (conn->state == CS_SYN_RECV || conn->state == CS_SYN_SENT))	{
+
+		// Incoming connection completion
+		if (pk_flags == ST_DATA && conn->state == CS_SYN_RECV) {
+			conn->state = CS_CONNECTED;
+		}
+
+		// Outgoing connection completion
+		if (pk_flags == ST_STATE && conn->state == CS_SYN_SENT)	{
 			conn->state = CS_CONNECTED;
 		
 			// If the user has defined the ON_CONNECT callback, use that to
