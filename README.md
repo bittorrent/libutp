@@ -28,9 +28,11 @@ it may be used from a multi-threaded environment as well.
 
 See utp.h for more details and other API documentation.
 
-## Examples
+## Example
 
-See the utp_test and utp_file directories for examples.
+See ucat.c. Build with:
+ 
+   make ucat
 
 ## Building
 
