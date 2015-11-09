@@ -23,6 +23,8 @@
 #ifndef __UTP_TYPES_H__
 #define __UTP_TYPES_H__
 
+// Allow libutp consumers or prerequisites to override PACKED_ATTRIBUTE
+#ifndef PACKED_ATTRIBUTE
 #ifdef __GNUC__
 	// Used for gcc tool chains accepting but not supporting pragma pack
 	// See http://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html
@@ -30,6 +32,7 @@
 #else
 	#define PACKED_ATTRIBUTE
 #endif
+#endif // ndef PACKED_ATTRIBUTE
 
 #ifdef __GNUC__
 	#define ALIGNED_ATTRIBUTE(x)  __attribute__((aligned (x)))
