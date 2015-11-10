@@ -25,13 +25,13 @@
 
 // Allow libutp consumers or prerequisites to override PACKED_ATTRIBUTE
 #ifndef PACKED_ATTRIBUTE
-#ifdef __GNUC__
+#if defined BROKEN_GCC_STRUCTURE_PACKING && defined __GNUC__
 	// Used for gcc tool chains accepting but not supporting pragma pack
 	// See http://gcc.gnu.org/onlinedocs/gcc/Type-Attributes.html
 	#define PACKED_ATTRIBUTE __attribute__((__packed__))
 #else
 	#define PACKED_ATTRIBUTE
-#endif
+#endif // defined BROKEN_GCC_STRUCTURE_PACKING && defined __GNUC__
 #endif // ndef PACKED_ATTRIBUTE
 
 #ifdef __GNUC__
