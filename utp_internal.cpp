@@ -190,7 +190,7 @@ struct SizableCircularBuffer {
 	// This is the elements that the circular buffer points to
 	void **elements;
 
-	void *get(size_t i) { assert(elements); return elements ? elements[i & mask] : NULL; }
+	void *get(size_t i) const { assert(elements); return elements ? elements[i & mask] : NULL; }
 	void put(size_t i, void *data) { assert(elements); elements[i&mask] = data; }
 
 	void grow(size_t item, size_t index);
@@ -558,7 +558,7 @@ struct UTPSocket {
 		va_end(va);
 		buf[4095] = '\0';
 
-		snprintf(buf2, 4096, "%p %s %06d %s", this, addrfmt(addr, addrbuf), conn_id_recv, buf);
+		snprintf(buf2, 4096, "%p %s %06d %s", this, addrfmt(addr, addrbuf), (int) conn_id_recv, buf);
 		buf2[4095] = '\0';
 
 		ctx->log(level, this, buf2);
@@ -2004,7 +2004,6 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// hasn't received a sample from us yet, and doesn't
 	// know what it is. We can't update out history unless
 	// we have a true measured sample
-	prev_delay_base = conn->our_hist.delay_base;
 	if (actual_delay != 0) {
 		conn->our_hist.add_sample(actual_delay, conn->ctx->current_ms);
 
