@@ -1903,10 +1903,21 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	// if we get the same ack_nr as in the last packet
 	// increase the duplicate_ack counter, otherwise reset
-	// it to 0
+	// it to 0.
+	// It's important to only count ACKs in ST_STATE packets. Any other
+	// packet (primarily ST_DATA) is likely to have been sent because of the
+	// other end having new outgoing data, not in response to incoming data.
+	// For instance, if we're receiving a steady stream of payload with no
+	// outgoing data, and we suddently have a few bytes of payload to send (say,
+	// a bittorrent HAVE message), we're very likely to see 3 duplicate ACKs
+	// immediately after sending our payload packet. This effectively disables
+	// the fast-resend on duplicate-ack logic for bi-directional connections
+	// (except in the case of a selective ACK). This is in line with BSD4.4 TCP
+	// implementation.
 	if (conn->cur_window_packets > 0) {
 		if (pk_ack_nr == ((conn->seq_nr - conn->cur_window_packets - 1) & ACK_NR_MASK)
-			&& conn->cur_window_packets > 0) {
+			&& conn->cur_window_packets > 0
+			&& pk_flags == ST_STATE) {
 			++conn->duplicate_ack;
 			if (conn->duplicate_ack == DUPLICATE_ACKS_BEFORE_RESEND && conn->mtu_probe_seq) {
 				// It's likely that the probe was rejected due to its size, but we haven't got an
@@ -1998,7 +2009,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		}
 	}
 
-  	const uint32 actual_delay = (uint32(pf1->reply_micro)==INT_MAX?0:uint32(pf1->reply_micro));
+	const uint32 actual_delay = (uint32(pf1->reply_micro)==INT_MAX?0:uint32(pf1->reply_micro));
 
 	// if the actual delay is 0, it means the other end
 	// hasn't received a sample from us yet, and doesn't
