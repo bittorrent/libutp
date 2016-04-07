@@ -79,10 +79,6 @@
 	#define I64u "%Lu"
 #endif
 
-#ifdef WIN32
-	#define snprintf _snprintf
-#endif
-
 // standard types
 typedef unsigned char byte;
 typedef unsigned char uint8;
