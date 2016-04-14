@@ -3426,7 +3426,7 @@ inline bool struct_utp_context::would_log(int level)
 	if (level == UTP_LOG_NORMAL) return log_normal;
 	if (level == UTP_LOG_MTU) return log_mtu;
 	if (level == UTP_LOG_DEBUG) return log_debug;
-    return true;
+	return true;
 }
 
 utp_socket_stats* utp_get_stats(utp_socket *socket)
