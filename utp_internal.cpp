@@ -3423,11 +3423,9 @@ void struct_utp_context::log_unchecked(utp_socket *socket, char const *fmt, ...)
 
 inline bool struct_utp_context::would_log(int level)
 {
-	switch (level) {
-		case UTP_LOG_NORMAL: if (!log_normal) return false;
-		case UTP_LOG_MTU:    if (!log_mtu)    return false;
-		case UTP_LOG_DEBUG:  if (!log_debug)  return false;
-	}
+	if (level == UTP_LOG_NORMAL) return log_normal;
+	if (level == UTP_LOG_MTU) return log_mtu;
+	if (level == UTP_LOG_DEBUG) return log_debug;
     return true;
 }
 
