@@ -1,5 +1,6 @@
 OBJS     = utp_internal.o utp_utils.o utp_hash.o utp_callbacks.o utp_api.o utp_packedsockaddr.o
-CFLAGS   = -Wall -DPOSIX -g -fno-exceptions -O2
+CFLAGS   = -Wall -DPOSIX -g -fno-exceptions $(OPT)
+OPT ?= -O3
 CXXFLAGS = $(CFLAGS) -fPIC -fno-rtti
 CC       = gcc
 CXX      = g++
