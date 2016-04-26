@@ -258,7 +258,7 @@ uint64 callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
-	debug("sendto: %zd byte packet to %s:%d%s\n", a->address_len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
+	debug("sendto: %zd byte packet to %s:%d%s\n", a->len, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port),
 				(a->flags & UTP_UDP_DONTFRAG) ? "  (DF bit requested, but not yet implemented)" : "");
 
 	if (o_debug >= 3)
