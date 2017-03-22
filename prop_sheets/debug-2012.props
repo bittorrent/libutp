@@ -16,7 +16,7 @@
       <StringPooling>false</StringPooling>
       <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
       <CompileAs>Default</CompileAs>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\yajl\src;$(SolutionDir)\ut_core\src;$(SolutionDir)\verification_lib;$(SolutionDir)\libtomcrypt\src\headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\yajl\src;$(SolutionDir)\ut_core\src;$(SolutionDir)\verification_lib;$(SolutionDir)\..\libtomcrypt\src\headers</AdditionalIncludeDirectories>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <CompileAsManaged>false</CompileAsManaged>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>

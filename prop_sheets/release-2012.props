@@ -11,7 +11,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\yajl\src;$(SolutionDir)\ut_core\src;$(SolutionDir)\verification_lib;$(SolutionDir)\libtomcrypt\src\headers</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\yajl\src;$(SolutionDir)\ut_core\src;$(SolutionDir)\verification_lib;$(SolutionDir)\..\libtomcrypt\src\headers</AdditionalIncludeDirectories>
       <Optimization>MinSpace</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
