@@ -5,3 +5,4 @@ ucat
 ucat-static
 tags
 *~
+build/
