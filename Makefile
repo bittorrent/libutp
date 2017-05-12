@@ -32,7 +32,7 @@ libutp.a: $(OBJS)
 	ar rvs libutp.a $(OBJS)
 
 ucat: ucat.o libutp.so
-	$(CC) $(CFLAGS) -o ucat ucat.o -L. -lutp $(LDFLAGS)
+	$(CC) $(CFLAGS) -o ucat ucat.o -L. -lutp -Wl,-rpath=. $(LDFLAGS)
 
 ucat-static: ucat.o libutp.a
 	$(CXX) $(CXXFLAGS) -o ucat-static ucat.o libutp.a $(LDFLAGS)
