@@ -52,6 +52,8 @@ static uint64 startGetTickCount;
 // MSVC 6 standard doesn't like division with uint64s
 static double counterPerMicrosecond;
 
+#ifndef WIN_RT
+
 static uint64 UTGetTickCount64()
 {
 	if (pt2GetTickCount64) {
@@ -78,6 +80,17 @@ static void Time_Initialize()
 	counterPerMicrosecond = (double)frequency / 1000000.0f;
 	startGetTickCount = UTGetTickCount64();
 }
+
+static inline uint64 UTP_GetMilliseconds()
+{
+    return GetTickCount();
+}
+
+#else
+void Time_Initialize();
+uint64 UTGetTickCount64();
+inline uint64 UTP_GetMilliseconds();
+#endif
 
 static int64 abs64(int64 x) { return x < 0 ? -x : x; }
 
@@ -106,11 +119,6 @@ static uint64 __GetMicroseconds()
 		ret = (int64)((counter - startPerformanceCounter) / counterPerMicrosecond);
 	}
 	return ret;
-}
-
-static inline uint64 UTP_GetMilliseconds()
-{
-	return GetTickCount();
 }
 
 #else //!WIN32

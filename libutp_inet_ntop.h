@@ -37,7 +37,7 @@
 // in debug, and our version int he wild.
 
 #if defined(_WIN32_WINNT)
-#if _WIN32_WINNT >= 0x600 // Win32, post-XP
+#if _WIN32_WINNT >= 0x600 && !defined WIN_RT // Win32, post-XP
 #include <ws2tcpip.h> // for inet_ntop, inet_pton
 #define INET_NTOP inet_ntop
 #define INET_PTON inet_pton
