@@ -622,7 +622,7 @@ int main(int argc, char *argv[])
 		debug("utp_get_context_stats() failed?\n");
 	}
 
-	debug("Destorying context\n");
+	debug("Destroying context\n");
 	utp_destroy(ctx);
 	return exit_code;
 }
