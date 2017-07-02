@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <limits.h> // for UINT_MAX
+#include <time.h>
 
 #include "utp_types.h"
 #include "utp_packedsockaddr.h"
