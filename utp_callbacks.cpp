@@ -69,16 +69,16 @@ void utp_call_on_error(utp_context *ctx, utp_socket *socket, int error_code)
 	ctx->callbacks[UTP_ON_ERROR](&args);
 }
 
-void utp_call_on_read(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len)
+bool utp_call_on_read(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len)
 {
 	utp_callback_arguments args;
-	if (!ctx->callbacks[UTP_ON_READ]) return;
+	if (!ctx->callbacks[UTP_ON_READ]) return false;
 	args.callback_type = UTP_ON_READ;
 	args.context = ctx;
 	args.socket = socket;
 	args.buf = buf;
 	args.len = len;
-	ctx->callbacks[UTP_ON_READ](&args);
+	return ctx->callbacks[UTP_ON_READ](&args) == 0;
 }
 
 void utp_call_on_overhead_statistics(utp_context *ctx, utp_socket *socket, int send, size_t len, int type)

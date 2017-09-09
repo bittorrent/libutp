@@ -2341,6 +2341,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	// Getting an in-order packet?
 	if (seqnr == 0) {
 		size_t count = packet_end - data;
+		bool drop = false;
 		if (count > 0 && conn->state != CS_FIN_SENT) {
 
 			#if UTP_DEBUG_LOGGING
@@ -2348,9 +2349,14 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 			#endif
 
 			// Post bytes to the upper layer
-			utp_call_on_read(conn->ctx, conn, data, count);
+			if (!utp_call_on_read(conn->ctx, conn, data, count)) {
+				drop = true;
+			}
 		}
-		conn->ack_nr++;
+
+		if (!drop) {
+			conn->ack_nr++;
+		}
 
 		// Check if the next packet has been received too, but waiting
 		// in the reorder buffer.
@@ -2394,8 +2400,12 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 			count = *(uint*)p;
 			if (count > 0 && conn->state != CS_FIN_SENT) {
 				// Pass the bytes to the upper layer
-				utp_call_on_read(conn->ctx, conn, p + sizeof(uint), count);
+				if (!utp_call_on_read(conn->ctx, conn, p + sizeof(uint), count)) {
+					free(p);
+					break;
+				}
 			}
+			
 			conn->ack_nr++;
 
 			// Free the element from the reorder buffer

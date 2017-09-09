@@ -31,7 +31,7 @@ int utp_call_on_firewall(utp_context *ctx, const struct sockaddr *address, sockl
 void utp_call_on_accept(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
 void utp_call_on_connect(utp_context *ctx, utp_socket *s);
 void utp_call_on_error(utp_context *ctx, utp_socket *s, int error_code);
-void utp_call_on_read(utp_context *ctx, utp_socket *s, const byte *buf, size_t len);
+bool utp_call_on_read(utp_context *ctx, utp_socket *s, const byte *buf, size_t len);
 void utp_call_on_overhead_statistics(utp_context *ctx, utp_socket *s, int send, size_t len, int type);
 void utp_call_on_delay_sample(utp_context *ctx, utp_socket *s, int sample_ms);
 void utp_call_on_state_change(utp_context *ctx, utp_socket *s, int state);
