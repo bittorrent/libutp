@@ -165,7 +165,6 @@ enum CONN_STATE {
 	CS_SYN_RECV,
 	CS_CONNECTED,
 	CS_CONNECTED_FULL,
-	CS_DESTROY_DELAY,
 	CS_RESET,
 	CS_DESTROY
 };
@@ -1277,15 +1276,6 @@ void UTPSocket::check_timeouts()
 		break;
 	}
 
-	// Close?
-	case CS_DESTROY_DELAY:
-		if ((int)(ctx->current_ms - rto_timeout) >= 0) {
-			state = (state == CS_DESTROY_DELAY) ? CS_DESTROY : CS_RESET;
-			if (cur_window_packets > 0) {
-				utp_call_on_error(ctx, this, UTP_ECONNRESET);
-			}
-		}
-		break;
 	// prevent warning
 	case CS_UNINITIALIZED:
 	case CS_IDLE:
@@ -3371,7 +3361,6 @@ void utp_close(UTPSocket *conn)
 	if (!conn) return;
 
 	assert(conn->state != CS_UNINITIALIZED
-		&& conn->state != CS_DESTROY_DELAY
 		&& conn->state != CS_DESTROY);
 
 	#if UTP_DEBUG_LOGGING
@@ -3412,7 +3401,6 @@ void utp_shutdown(UTPSocket *conn, int how)
 	if (!conn) return;
 
 	assert(conn->state != CS_UNINITIALIZED
-		&& conn->state != CS_DESTROY_DELAY
 		&& conn->state != CS_DESTROY);
 
 	#if UTP_DEBUG_LOGGING
