@@ -2987,6 +2987,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 		conn->seq_nr = utp_call_get_random(ctx, NULL);
 		conn->fast_resend_seq_nr = conn->seq_nr;
 		conn->state = CS_SYN_RECV;
+		conn->rto_timeout = utp_call_get_milliseconds(conn->ctx, conn) + conn->rto;
 
 		const size_t read = utp_process_incoming(conn, buffer, len, true);
 
