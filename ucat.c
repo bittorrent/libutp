@@ -59,7 +59,7 @@ utp_socket *s;
 int fd;
 int buf_len = 0;
 unsigned char *buf, *p;
-int eof_flag, quit_flag, exit_code;
+int eof_flag, utp_eof_flag, utp_shutdown_flag, quit_flag, exit_code;
 
 void die(char *fmt, ...)
 {
@@ -149,8 +149,13 @@ void write_data(void)
 out:
 	if (buf_len == 0 && eof_flag) {
 		if (s) {
-			debug("Buffer empty, and previously found EOF.  Closing socket\n");
-			utp_close(s);
+			debug("Buffer empty, and previously found EOF.  Shutdown socket\n");
+			utp_shutdown_flag = 1;
+			if (!utp_eof_flag) {
+				utp_shutdown(s, SHUT_WR);
+			} else {
+				utp_close(s);
+			}
 		}
 		else {
 			quit_flag = 1;
@@ -223,8 +228,11 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 			break;
 
 		case UTP_STATE_EOF:
-			debug("Received EOF from socket; closing\n");
-			utp_close(a->socket);
+			debug("Received EOF from socket\n");
+			utp_eof_flag = 1;
+			if (utp_shutdown_flag) {
+				utp_close(a->socket);
+			}
 			break;
 
 		case UTP_STATE_DESTROYING:
