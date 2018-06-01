@@ -2315,7 +2315,8 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	// The connection is not in a state that can accept data?
 	if (conn->state != CS_CONNECTED &&
-		conn->state != CS_CONNECTED_FULL) {
+		conn->state != CS_CONNECTED_FULL &&
+		conn->state != CS_SYN_RECV) {
 		return 0;
 	}
 
