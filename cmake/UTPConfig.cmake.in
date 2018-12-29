@@ -1,0 +1,79 @@
+# Author: KangLin(kl222@126.com)
+
+# Utp
+# --------
+#
+# Find Utp
+#
+# Find the Utp libraries
+#
+# ::
+#
+#   This module defines the following variables:
+#      UTP_FOUND          - True if Utp libraries are found
+#      UTP_LIBRARIES      - Set when Utp libraries is found
+#      UTP_INCLUDE_DIRS   - where to find Utp heard directory.
+#      UTP_DEFINITIONS    - Set definitions
+#      UTP_VERSION_STRING - the version of Utp found (since CMake 2.8.8)
+
+SET(UTP_VERSION_STRING @VERSION_STRING@)
+
+if(NOT MSVC)
+    find_package(PkgConfig)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(UTP utp)
+        if(UTP_FOUND)
+            return()
+        endif()
+    endif()
+endif()
+
+# Compute and install package configuration and version files
+get_filename_component(_dir "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(_prefix "${_dir}/../.." ABSOLUTE)
+
+find_path(Utp_INCLUDE_DIR utp.h
+    HINTS 
+        ${_prefix}
+    PATH_SUFFIXES
+        include
+    )
+find_library(Utp_LIBRARY utp
+    HINTS ${_prefix}
+    PATH_SUFFIXES lib
+    )
+
+find_package_handle_standard_args(UTP
+    REQUIRED_VARS Utp_INCLUDE_DIR
+                  Utp_LIBRARY
+    VERSION_VAR   Utp_VERSION_STRING)
+
+if(UTP_FOUND)
+    SET(UTP_INCLUDE_DIRS ${Utp_INCLUDE_DIR})
+    SET(UTP_LIBRARIES ${Utp_LIBRARY} @CMAKE_UTP_LIBS@)
+    SET(UTP_DEFINITIONS @CMAKE_UTP_DEFINES@)
+endif()
+
+MARK_AS_ADVANCED(Utp_INCLUDE_DIR Utp_LIBRARY)
+
+#*
+# * Copyright (c) 2010-2013 BitTorrent, Inc.
+# *
+# * Permission is hereby granted, free of charge, to any person obtaining a copy
+# * of this software and associated documentation files (the "Software"), to deal
+# * in the Software without restriction, including without limitation the rights
+# * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# * copies of the Software, and to permit persons to whom the Software is
+# * furnished to do so, subject to the following conditions:
+# *
+# * The above copyright notice and this permission notice shall be included in
+# * all copies or substantial portions of the Software.
+# *
+# * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# * THE SOFTWARE.
+# *

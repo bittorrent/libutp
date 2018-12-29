@@ -30,22 +30,82 @@ See utp.h for more details and other API documentation.
 
 ## Example
 
-See ucat.c. Build with:
+See app/ucat.c. Build with:
  
-   make ucat
+	mkdir build
+	cd build
+	cmake .. -DBUILD_APP=ON
+	cmake --build . --target install
+
+See app/ucat.cpp . The is used libevent.
+
+	mkdir build
+	cd build
+	cmake .. -DBUILD_APP=ON -DLibevent_DIR=${libevent_cMake_path}
+	cmake --build . --target install
+
+You can find ucat in build/bin/${CONFIGURE}/ucat in windows, or build/app/ucat in other system.
 
 ## Building
 
 uTP has been known to build on Windows with MSVC and on linux and OS X with gcc.
-On Windows, use the MSVC project files (utp.sln, and friends). On other platforms,
+
+### Depend
+
+#### [CMake](https://cmake.org/)
+
+CMake is a tool, that generates native makefiles and workspaces.
+It integrates well with a number of IDEs including Qt Creator and Visual Studio.
+
+#### [libevent(optional)](https://github.com/libevent/libevent)
+
+Only the application depend on libevent.
+
+### linux
+
 building the shared library is as simple as:
 
-    make
+	mkdir build
+	cd build
+	cmake .. -DBUILD_APP=OFF
+	cmake --build .
+	cmake --build . --target install
 
 To build one of the examples, which will statically link in everything it needs
 from libutp:
 
-    cd utp_test && make
+	mkdir build
+	cd build
+	cmake .. -DBUILD_APP=ON
+	cmake --build . --target install
+
+
+### windows
+#### msvc
+
+ag. Visual Studio 15 2017 
+
+	mkdir build
+	cd build
+	cmake .. -G"Visual Studio 15 2017" 
+	cmake --build . --target install
+
+    
+#### mingw
+
+	mkdir build
+	cd build
+	cmake .. -G"MinGW Makefiles" 
+	cmake --build . --target install
+
+
+### android
+
+	mkdir build
+	cd build
+	export ANDROID_NDK=/absolute/path/to/the/android-ndk
+	cmake .. -DCMAKE_TOOLCHAIN_FILE=`pwd`/../cmake/Platforms/android.toolchain.cmake
+	cmake --build . --target install
 
 ## Packaging and API
 

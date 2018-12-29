@@ -23,6 +23,7 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -30,36 +31,66 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/ip.h>
-#include <poll.h>
-#include <netdb.h>
-#include <signal.h>
+#ifdef HAVE_UNISTD_H
+	#include <unistd.h>
+#endif
+#ifndef HAVE_GETOPT
+    #include "getopt.h"
+#endif
+
+#ifdef HAVE_POLL
+    #include <poll.h>
+#endif
+#ifdef HAVE_SIGNAL
+	#include <signal.h>
+#endif
 
 #ifdef __linux__
+    #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <netinet/ip.h>
+    
+    #include <netdb.h>
 	#include <linux/errqueue.h>
 	#include <netinet/ip_icmp.h>
 #endif
 
 #include "utp.h"
 
+#ifndef STDOUT_FILENO
+	#define STDOUT_FILENO 1
+#endif
+#ifndef STDIN_FILENO
+    #define	STDIN_FILENO 0
+#endif
+
 // options
-int o_debug;
-char *o_local_address,  *o_local_port,
+static int o_debug;
+static char *o_local_address,  *o_local_port,
 	 *o_remote_address, *o_remote_port;
-int o_listen;
-int o_buf_size = 4096;
-int o_numeric;
+static int o_listen;
+static int o_buf_size = 4096;
+static int o_numeric;
 
-utp_context *ctx;
-utp_socket *s;
+static utp_context *ctx;
+static utp_socket *s;
 
-int fd;
-int buf_len = 0;
-unsigned char *buf, *p;
-int eof_flag, utp_eof_flag, utp_shutdown_flag, quit_flag, exit_code;
+#ifdef HAVE_WINSOCK2_H
+	static struct sockaddr_in stdinSockAddr;
+	static SOCKET stdinFd = INVALID_SOCKET, stdInListerFd = INVALID_SOCKET;
+    static SOCKET fd;
+#else
+    static int fd;
+    #define INVALID_SOCKET -1
+	#define socklen_t int
+#endif
+
+static int buf_len = 0;
+static unsigned char *buf, *p;
+static int eof_flag, utp_eof_flag, utp_shutdown_flag, quit_flag, exit_code = 0;
+
+static int init();
+static int clean();
 
 void die(char *fmt, ...)
 {
@@ -68,6 +99,7 @@ void die(char *fmt, ...)
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
+    clean();
 	exit(1);
 }
 
@@ -84,25 +116,49 @@ void debug(char *fmt, ...)
 	}
 }
 
+void error(char *fmt, ...)
+{
+	va_list ap;
+	if (o_debug) {
+		fflush(stdout);
+		fprintf(stderr, "error: ");
+		va_start(ap, fmt);
+		vfprintf(stderr, fmt, ap);
+		va_end(ap);
+		fflush(stderr);
+	}
+}
+
 void pdie(char *err)
 {
 	debug("errno %d\n", errno);
 	fflush(stdout);
 	perror(err);
+    clean();
 	exit(1);
 }
 
 void hexdump(const void *p, size_t len)
 {
     int count = 1;
-
+	unsigned char* c = p;
+	unsigned char* cc = p;
     while (len--) {
         if (count == 1)
-            fprintf(stderr, "    %p: ", p);
+            fprintf(stderr, "    %p: ", c);
+		
+        fprintf(stderr, " %02x", *(unsigned char*)c++ & 0xff);
 
-        fprintf(stderr, " %02x", *(unsigned char*)p++ & 0xff);
-
-        if (count++ == 16) {
+        if (count++ == 8) {
+			fprintf(stderr, "        ");
+			while(c != cc)
+            {
+                unsigned char a = *cc++;
+                if(a>=37 && a<=126)
+                    fprintf(stderr, "%c ", a);
+                else 
+                    fprintf(stderr, ". ");
+            }
             fprintf(stderr, "\n");
             count = 1;
         }
@@ -110,6 +166,32 @@ void hexdump(const void *p, size_t len)
 
     if (count != 1)
         fprintf(stderr, "\n");
+}
+
+static int init()
+{
+    int err = 0;
+
+#ifdef HAVE_WINSOCK2_H
+	WORD version_requested = MAKEWORD(2, 0);
+	WSADATA wsa_data;
+	err = WSAStartup(version_requested, &wsa_data);
+	if (err)
+		pdie("init");
+#endif
+
+    return err;
+}
+
+static int clean()
+{
+    int err = 0;
+
+#ifdef HAVE_WINSOCK2_H
+	err = WSACleanup();
+#endif
+
+    return err;
 }
 
 void handler(int number)
@@ -218,8 +300,9 @@ uint64 callback_on_error(utp_callback_arguments *a)
 
 uint64 callback_on_state_change(utp_callback_arguments *a)
 {
-	debug("state %d: %s\n", a->state, utp_state_names[a->state]);
 	utp_socket_stats *stats;
+
+    debug("state %d: %s\n", a->state, utp_state_names[a->state]);
 
 	switch (a->state) {
 		case UTP_STATE_CONNECT:
@@ -286,7 +369,10 @@ void setup(void)
 {
 	struct addrinfo hints, *res;
 	struct sockaddr_in sin, *sinp;
-	int error;
+    socklen_t len = sizeof(sin);
+	int err;
+
+#ifdef HAVE_SIGNAL
 	struct sigaction sigIntHandler;
 
 	sigIntHandler.sa_handler = handler;
@@ -294,7 +380,8 @@ void setup(void)
 	sigIntHandler.sa_flags = 0;
 
 	sigaction(SIGINT, &sigIntHandler, NULL);
-
+#endif
+    
 	p = buf = malloc(o_buf_size);
 	if (!buf)
 		pdie("malloc");
@@ -303,12 +390,22 @@ void setup(void)
 	fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (fd < 0)
 		pdie("socket");
+#ifdef WIN32
+	{
+		int64 nonblocking = 1;
+		if (ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR)
+		{
+			error("Set stdin lister to nonblock is error\n");
+			pdie("socket");
+		}
+	}
+#endif
 
-	#ifdef __linux__
+#ifdef __linux__
 	int on = 1;
 	if (setsockopt(fd, SOL_IP, IP_RECVERR, &on, sizeof(on)) != 0)
 		pdie("setsockopt");
-	#endif
+#endif
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -317,15 +414,14 @@ void setup(void)
 	if (o_numeric)
 		hints.ai_flags |= AI_NUMERICHOST;
 
-	if ((error = getaddrinfo(o_local_address, o_local_port, &hints, &res)))
-		die("getaddrinfo: %s\n", gai_strerror(error));
+	if ((err = getaddrinfo(o_local_address, o_local_port, &hints, &res)))
+		die("getaddrinfo: %s\n", gai_strerror(err));
 
 	if (bind(fd, res->ai_addr, res->ai_addrlen) != 0)
 		pdie("bind");
 
 	freeaddrinfo(res);
 
-	socklen_t len = sizeof(sin);
 	if (getsockname(fd, (struct sockaddr *) &sin, &len) != 0)
 		pdie("getsockname");
 	debug("Bound to local %s:%d\n", inet_ntoa(sin.sin_addr), ntohs(sin.sin_port));
@@ -353,8 +449,8 @@ void setup(void)
 		assert(s);
 		debug("UTP socket %p\n", s);
 
-		if ((error = getaddrinfo(o_remote_address, o_remote_port, &hints, &res)))
-			die("getaddrinfo: %s\n", gai_strerror(error));
+		if ((err = getaddrinfo(o_remote_address, o_remote_port, &hints, &res)))
+			die("getaddrinfo: %s\n", gai_strerror(err));
 
 		sinp = (struct sockaddr_in *)res->ai_addr;
 		debug("Connecting to %s:%d\n", inet_ntoa(sinp->sin_addr), ntohs(sinp->sin_port));
@@ -363,6 +459,87 @@ void setup(void)
 		freeaddrinfo(res);
 	}
 }
+
+int RangedRand(int min, int max)
+{
+	return (double)rand() / (max + 1) * (max - min) + min;
+}
+
+#ifdef WINDOWS
+
+DWORD WINAPI stdin_thread(LPVOID lpParam)
+{
+	int ret = 0;
+	char buf[256];
+	SOCKET s;
+
+	s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == s)
+	{
+		error("Could not create/add a socket in stdin_thread!\n");
+		return -1;
+	}
+
+	ret = connect(s, (const struct sockaddr*)&stdinSockAddr, sizeof(stdinSockAddr));
+	if (ret)
+	{
+		error("connect stdin fail:%d. in stdin_thread!\n", WSAGetLastError());
+		return ret;
+	}
+
+	while (fgets(buf, sizeof(buf), stdin) && !quit_flag)
+	{
+		send(s, buf, strlen(buf), 0);
+	}
+
+	return 0;
+}
+
+int setup_stdin()
+{
+	int ret = 0;
+	unsigned long nonblocking = 1;
+	int iPort = RangedRand(18888, 18988);
+	stdinSockAddr.sin_family = AF_INET;
+	stdinSockAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	stdinSockAddr.sin_port = htons(iPort);
+
+	stdInListerFd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == stdInListerFd)
+	{
+		error("Could not create stdin lister socket\n");
+		return -1;
+	}
+	
+	do {
+		/*if (ioctlsocket(stdInListerFd, FIONBIO, &nonblocking) == SOCKET_ERROR)
+		{
+			error("Set stdin lister to nonblock is error\n");
+			break;
+		}*/
+		ret = bind(stdInListerFd, &stdinSockAddr, sizeof(stdinSockAddr));
+		if (ret)
+		{
+			error("setup_stdin bind lister error: %d\n", WSAGetLastError());
+			break;
+		}
+		ret = listen(stdInListerFd, 5);
+		if (ret)
+		{
+			error("setup_stdin lister error: %d\n", WSAGetLastError());
+			break;
+		}
+
+		CreateThread(NULL, 0, stdin_thread, NULL, NULL, NULL);
+		return ret;
+	} while (0);
+
+	if (ret)
+		if (INVALID_SOCKET != stdInListerFd)
+			closesocket(stdInListerFd);
+	return ret;
+}
+#endif
 
 #ifdef __linux__
 void handle_icmp()
@@ -480,13 +657,14 @@ void handle_icmp()
 }
 #endif
 
+#ifdef HAVE_POLL
 void network_loop(void)
 {
 	unsigned char socket_data[4096];
 	struct sockaddr_in src_addr;
 	socklen_t addrlen = sizeof(src_addr);
-	ssize_t len;
-	int ret;
+	ssize_t len = 0;
+	int ret = 0;
 
 	struct pollfd p[2];
 
@@ -553,6 +731,133 @@ void network_loop(void)
 
 	utp_check_timeouts(ctx);
 }
+#elif HAVE_SELECT
+void network_loop(void)
+{
+	unsigned char socket_data[4096];
+	struct sockaddr_in src_addr;
+	socklen_t addrlen = sizeof(src_addr);
+	ssize_t len = 0;
+	int ret = 0;
+	int maxfd = 0;
+	fd_set readSet;
+	struct timeval tm = {0, 500};
+
+#ifndef HAVE_WINSOCK2_H
+	maxfd = fd + 1;
+#endif
+	while (1)
+	{
+		FD_ZERO(&readSet);
+#ifdef HAVE_WINSOCK2_H
+		if (INVALID_SOCKET != stdInListerFd)
+			FD_SET(stdInListerFd, &readSet);
+		if (INVALID_SOCKET != stdinFd)
+			FD_SET(stdinFd, &readSet);
+#else
+        FD_SET(STDIN_FILENO, &readSet);
+#endif
+		FD_SET(fd, &readSet);
+
+		ret = select(maxfd, &readSet, NULL, NULL, &tm);
+		if (ret < 0)
+		{
+			printf("select fail: %d, errno:%d\n", ret, errno);
+			perror("select fail");
+			//if(EINTR == errno)
+			break;
+		}
+		else if (0 == ret)
+			;// debug("select timeout\n");
+		else
+			while (ret-- > 0)
+			{
+#ifdef HAVE_WINSOCK2_H
+				if (FD_ISSET(stdInListerFd, &readSet))
+				{
+					int64 nonblocking = 1;
+					stdinFd = accept(stdInListerFd, NULL, NULL);
+					if (ioctlsocket(stdinFd, FIONBIO, &nonblocking) == SOCKET_ERROR)
+					{
+						error("Set stdin to nonblock is error\n");
+						break;
+					}
+				}
+				if (FD_ISSET(stdinFd, &readSet))
+				{
+					len = recv(stdinFd, buf + buf_len, o_buf_size - buf_len, 0);
+					if (len < 0 && errno != EINTR)
+						pdie("read stdin");
+					if (len == 0) {
+						debug("EOF from file\n");
+						eof_flag = 1;
+						close(stdinFd);
+					}
+					else {
+						buf_len += len;
+						debug("Read %d bytes, buffer now %d bytes long\n", len, buf_len);
+					}
+					write_data();
+				}
+#else
+                if (FD_ISSET(STDIN_FILENO, &readSet))
+				{
+					len = read(STDIN_FILENO, buf + buf_len, o_buf_size - buf_len);
+					if (len < 0 && errno != EINTR)
+						pdie("read stdin");
+					if (len == 0) {
+						debug("EOF from file\n");
+						eof_flag = 1;
+						close(STDIN_FILENO);
+					}
+					else {
+						buf_len += len;
+						debug("Read %d bytes, buffer now %d bytes long\n", len, buf_len);
+					}
+					write_data();
+				}
+#endif
+				if (FD_ISSET(fd, &readSet))
+				{
+					while (1) {
+						int flags = 0;
+#ifdef MSG_DONTWAIT
+						flags = MSG_DONTWAIT;
+#endif
+						len = recvfrom(fd, socket_data, sizeof(socket_data), flags, (struct sockaddr *)&src_addr, &addrlen);
+						if (len < 0) {
+#ifdef WIN32
+							if (WSAEWOULDBLOCK == GetLastError())
+#else
+							if (errno == EAGAIN || errno == EWOULDBLOCK)
+#endif
+							{
+								utp_issue_deferred_acks(ctx);
+								break;
+							}
+							else
+								pdie("recv");
+						}
+
+						debug("Received %zd byte UDP packet from %s:%d\n", len, inet_ntoa(src_addr.sin_addr), ntohs(src_addr.sin_port));
+						if (o_debug >= 3)
+							hexdump(socket_data, len);
+
+						if (!utp_process_udp(ctx, socket_data, len, (struct sockaddr *)&src_addr, addrlen))
+							debug("UDP packet not handled by UTP.  Ignoring.\n");
+					}
+				}
+			}
+			
+		utp_check_timeouts(ctx);
+	}
+}
+#else
+void network_loop(void)
+{
+	
+}
+#endif
 
 void usage(char *name)
 {
@@ -574,8 +879,9 @@ void usage(char *name)
 
 int main(int argc, char *argv[])
 {
-	int i;
-
+	int i = 0;
+    utp_context_stats *stats = NULL;
+    
 	o_local_address = "0.0.0.0";
 
 	while (1) {
@@ -608,7 +914,14 @@ int main(int argc, char *argv[])
 	if (! o_listen && (!o_remote_port || !o_remote_address))
 		usage(argv[0]);
 
+    exit_code = init();
+    if(exit_code)
+        return exit_code;
+    
 	setup();
+#ifdef WINDOWS
+	setup_stdin();
+#endif
 	while (!quit_flag)
 		network_loop();
 
@@ -617,7 +930,7 @@ int main(int argc, char *argv[])
 		exit_code++;
 	}
 
-	utp_context_stats *stats = utp_get_context_stats(ctx);
+	stats = utp_get_context_stats(ctx);
 
 	if (stats) {
 		debug("           Bucket size:    <23    <373    <723    <1400    >1400\n");
@@ -632,5 +945,6 @@ int main(int argc, char *argv[])
 
 	debug("Destroying context\n");
 	utp_destroy(ctx);
+    exit_code = clean();
 	return exit_code;
 }

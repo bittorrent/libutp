@@ -70,6 +70,10 @@
 #ifdef _MSC_VER
 	#include <BaseTsd.h>
 	typedef SSIZE_T ssize_t;
+    #ifndef snprintf
+        #include <stdio.h>
+        #define snprintf _snprintf
+    #endif
 #endif
 
 #ifdef POSIX
