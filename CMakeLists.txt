@@ -72,6 +72,10 @@ install(FILES
         "${CMAKE_INSTALL_DOCDIR}")
 
 add_subdirectory(src)
+option(BUILD_APP "Build application" ON)
+if(BUILD_APP)
+    add_subdirectory(app)
+endif(BUILD_APP)
 option(BUILD_TESTS "Build tests" ON)
 if(BUILD_TESTS)
     add_subdirectory(tests)
