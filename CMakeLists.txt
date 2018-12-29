@@ -72,7 +72,10 @@ install(FILES
         "${CMAKE_INSTALL_DOCDIR}")
 
 add_subdirectory(src)
-
+option(BUILD_TESTS "Build tests" ON)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 
 #*
 # * Copyright (c) 2010-2013 BitTorrent, Inc.
