@@ -1,0 +1,79 @@
+#TODO: Change version
+version: '0.9.0.{build}'
+
+cache:
+  - c:\projects\libevent
+    
+configuration:
+  - Debug
+  - Release
+
+platform:
+  - 32
+  - 64
+
+environment:
+  matrix:
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    TOOLCHAIN_VERSION: 15
+    BUILD_TARGERT: windows_msvc
+    BUILD_TESTS: ON
+
+  - BUILD_TARGERT: windows_msvc
+    TOOLCHAIN_VERSION: 14
+
+  - BUILD_TARGERT: windows_msvc
+    TOOLCHAIN_VERSION: 12
+
+  - BUILD_TARGERT: windows_msvc
+    TOOLCHAIN_VERSION: 11
+
+  - BUILD_TARGERT: windows_msvc
+    TOOLCHAIN_VERSION: 9
+    
+  - BUILD_TARGERT: windows_mingw
+    TOOLCHAIN_VERSION: 630
+    BUILD_TESTS: ON
+    TEST_AUTOMAKE: ON
+    
+  - BUILD_TARGERT: windows_mingw
+    TOOLCHAIN_VERSION: 530
+    BUILD_TESTS: ON
+
+  - BUILD_TARGERT: android_arm
+    TOOLCHAIN_VERSION: 4.9
+    ANDROID_API: 18
+  
+  - BUILD_TARGERT: android_x86
+    TOOLCHAIN_VERSION: 4.9
+    ANDROID_API: 28
+    
+init:
+  
+install:
+  - for /f "delims=" %%i in ('git describe --tags') do (set BUILD_VERSION=%%i)
+  - if "%BUILD_VERSION%" == "" for /f "delims=" %%i in ('git rev-parse HEAD') do (set BUILD_VERSION=%%i) 
+  - echo BUILD_VERSION=%BUILD_VERSION%
+
+before_build:
+
+build_script:
+  - C:\msys64\usr\bin\bash.exe -e -l -c "bash /c/projects/libutp/ci/build.sh /c/projects/libutp"
+
+artifacts:
+  - path: install
+    name: libutp_$(BUILD_TARGERT)$(TOOLCHAIN_VERSION)_$(platform)_$(CONFIGURATION)_$(BUILD_VERSION)
+    type: zip
+
+branches:
+  only:
+    - master
+
+deploy:
+  provider: GitHub
+  #token: https://github.com/settings/tokens encode token: https://ci.appveyor.com/tools/encrypt
+  auth_token:
+    secure:  #TODO: set your token
+  on:
+    appveyor_repo_tag: true        # deploy on tag push only
+    configuration: Release

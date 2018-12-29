@@ -1,0 +1,63 @@
+# Copyright (C) 2018 KangLin<kl222@126.com>
+# Licensed under the MIT license
+
+language: cpp
+dist: trusty
+
+addons:
+  apt:
+    packages:
+      - doxygen
+      - graphviz
+
+cache:
+  directories:
+    - $HOME/download
+
+init:
+  - export CPU_NUM=`cat /proc/cpuinfo |grep 'cpu cores' |wc -l`
+  
+install:
+  #- | 
+  #  GTEST_VERSION=1.8.1 
+  #  GTEST_PREFIX=~/.local/ 
+  #  if [ ! -f $HOME/download/release-${GTEST_VERSION}.tar.gz ]; then 
+  #      mkdir -p $HOME/download
+  #      wget -O $HOME/download/release-${GTEST_VERSION}.tar.gz https://github.com/google/googletest/archive/release-${GTEST_VERSION}.tar.gz 
+  #  fi
+  #  tar xf $HOME/download/release-${GTEST_VERSION}.tar.gz -C .
+  #  cd googletest-release-${GTEST_VERSION}/ 
+  #  cmake -DCVF_VERSION=${GTEST_VERSION} -DCMAKE_INSTALL_PREFIX:PATH=${GTEST_PREFIX} . 
+  #  cmake --build . --target install 
+  #  export PKG_CONFIG_PATH="$(find "${GTEST_PREFIX}" -type d -name pkgconfig)" 
+    
+  #- sed 's,-I,-isystem ,g' -i "${PKG_CONFIG_PATH}"/gtest.pc  # suppress compile warnings
+  
+  - |
+    cd $TRAVIS_BUILD_DIR
+    mkdir build_libevent
+    LIBEVENT_FILE=release-2.1.8-stable 
+    wget https://github.com/libevent/libevent/archive/${LIBEVENT_FILE}.tar.gz 
+    tar -xzvf ${LIBEVENT_FILE}.tar.gz
+    cd libevent-${LIBEVENT_FILE}
+    cmake . \
+        -G"${PRJ_GEN}" \
+        -DCMAKE_INSTALL_PREFIX="$TRAVIS_BUILD_DIR/install" \
+        -DCMAKE_BUILD_TYPE=${Configuration} \
+        -DCMAKE_VERBOSE_MAKEFILE=ON 
+    cmake --build . --config ${Configuration} --target install
+    CMAKE_PARA="${CMAKE_PARA} -DLibevent_DIR=${PROJECT_DIR}/install/cmake"
+
+script:
+  - set -e
+  - cd $TRAVIS_BUILD_DIR
+  - mkdir -p build
+  - cd build
+  - cmake .. -G"Unix Makefiles" \
+        -DCMAKE_BUILD_TYPE=${Configuration} \
+        -DCMAKE_VERBOSE_MAKEFILE=ON \
+	-DCMAKE_INSTALL_PREFIX=`pwd`/install \
+	-DLibevent_DIR=$TRAVIS_BUILD_DIR/install/cmake
+
+  - cmake --build . --target install
+  - cd ..
