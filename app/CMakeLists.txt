@@ -23,9 +23,26 @@ endif(WIN32)
 
 message("LIBEVENT_SHARED_LIBRARIES:${LIBEVENT_SHARED_LIBRARIES}")
 
-utp_check_symbol_exists(sigaction signal.h HAVE_SIGNAL)
-set(SOURCE_FILES ${SOURCE_FILES} ucat.c)
-
+find_package(Libevent 2.0.10)
+if(Libevent_FOUND)
+	utp_check_symbol_exists(SIGINT signal.h HAVE_SIGNAL)
+    message("Add path ${Libevent_DIR}/../lib to environmental variable PATH")
+    set(UCAT_INCLUDES ${UCAT_INCLUDES} ${LIBEVENT_INCLUDE_DIRS})
+    set(UTP_LIBS ${UTP_LIBS} ${LIBEVENT_SHARED_LIBRARIES})
+	set(SOURCE_FILES
+		${SOURCE_FILES}
+	    ucat.cpp
+		)
+    if(WIN32)
+        set(SOURCE_FILES
+            ${SOURCE_FILES}
+            Stdin.cpp
+            Stdin.h)
+    endif()
+else()
+	utp_check_symbol_exists(sigaction signal.h HAVE_SIGNAL)
+	set(SOURCE_FILES ${SOURCE_FILES} ucat.c)
+endif()
 
 set(SOURCE_FILES
 	${SOURCE_FILES}
