@@ -32,7 +32,6 @@
 #include "utp_callbacks.h"
 #include "utp_templates.h"
 #include "utp_hash.h"
-#include "utp_hash.h"
 #include "utp_packedsockaddr.h"
 
 /* These originally lived in utp_config.h */
