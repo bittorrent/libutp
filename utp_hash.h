@@ -76,8 +76,8 @@ typedef uint (*utp_hash_equal_t)(const void *key_a, const void *key_b, size_t ke
 //
 struct utp_hash_t {
 	utp_link_t N;
-	byte K;
-	byte E;
+	uint8_t K;
+	uint8_t E;
 	size_t count;
 	utp_hash_compute_t hash_compute;
 	utp_hash_equal_t hash_equal;

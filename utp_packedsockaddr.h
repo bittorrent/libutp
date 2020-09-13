@@ -28,7 +28,7 @@
 struct PACKED_ATTRIBUTE PackedSockAddr {
 	// The values are always stored here in network byte order
 	union {
-		byte _in6[16];		// IPv6
+		uint8_t _in6[16];		// IPv6
 		uint16_t _in6w[8];	// IPv6, word based (for convenience)
 		uint32_t _in6d[4];	// Dword access
 		in6_addr _in6addr;	// For convenience
@@ -43,7 +43,7 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	#define _sin6w _in._in6w
 	#define _sin6d _in._in6d
 
-	byte get_family() const;
+	uint8_t get_family() const;
 	bool operator==(const PackedSockAddr& rhs) const;
 	bool operator!=(const PackedSockAddr& rhs) const;
 	void set(const SOCKADDR_STORAGE* sa, socklen_t len);

@@ -32,7 +32,7 @@
 
 #include "libutp_inet_ntop.h"
 
-byte PackedSockAddr::get_family() const
+uint8_t PackedSockAddr::get_family() const
 {
 	#if defined(__sh__)
 		return ((_sin6d[0] == 0) && (_sin6d[1] == 0) && (_sin6d[2] == htonl(0xffff)) != 0) ?
@@ -98,7 +98,7 @@ PackedSockAddr::PackedSockAddr(void)
 SOCKADDR_STORAGE PackedSockAddr::get_sockaddr_storage(socklen_t *len = NULL) const
 {
 	SOCKADDR_STORAGE sa;
-	const byte family = get_family();
+	const uint8_t family = get_family();
 	if (family == AF_INET) {
 		sockaddr_in *sin = (sockaddr_in*)&sa;
 		if (len) *len = sizeof(sockaddr_in);
@@ -121,7 +121,7 @@ SOCKADDR_STORAGE PackedSockAddr::get_sockaddr_storage(socklen_t *len = NULL) con
 cstr PackedSockAddr::fmt(str s, size_t len) const
 {
 	memset(s, 0, len);
-	const byte family = get_family();
+	const uint8_t family = get_family();
 	str i;
 	if (family == AF_INET) {
 		INET_NTOP(family, (uint32_t*)&_sin4, s, len);

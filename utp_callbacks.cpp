@@ -69,7 +69,7 @@ void utp_call_on_error(utp_context *ctx, utp_socket *socket, int error_code)
 	ctx->callbacks[UTP_ON_ERROR](&args);
 }
 
-void utp_call_on_read(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len)
+void utp_call_on_read(utp_context *ctx, utp_socket *socket, const uint8_t *buf, size_t len)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_ON_READ]) return;
@@ -180,7 +180,7 @@ size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *socket)
 	return (size_t)ctx->callbacks[UTP_GET_READ_BUFFER_SIZE](&args);
 }
 
-void utp_call_log(utp_context *ctx, utp_socket *socket, const byte *buf)
+void utp_call_log(utp_context *ctx, utp_socket *socket, const uint8_t *buf)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_LOG]) return;
@@ -191,7 +191,7 @@ void utp_call_log(utp_context *ctx, utp_socket *socket, const byte *buf)
 	ctx->callbacks[UTP_LOG](&args);
 }
 
-void utp_call_sendto(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32_t flags)
+void utp_call_sendto(utp_context *ctx, utp_socket *socket, const uint8_t *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32_t flags)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_SENDTO]) return;

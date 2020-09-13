@@ -113,14 +113,14 @@ char addrbuf[65];
 struct PACKED_ATTRIBUTE PacketFormatV1 {
 	// packet_type (4 high bits)
 	// protocol version (4 low bits)
-	byte ver_type;
-	byte version() const { return ver_type & 0xf; }
-	byte type() const { return ver_type >> 4; }
-	void set_version(byte v) { ver_type = (ver_type & 0xf0) | (v & 0xf); }
-	void set_type(byte t) { ver_type = (ver_type & 0xf) | (t << 4); }
+	uint8_t ver_type;
+	uint8_t version() const { return ver_type & 0xf; }
+	uint8_t type() const { return ver_type >> 4; }
+	void set_version(uint8_t v) { ver_type = (ver_type & 0xf0) | (v & 0xf); }
+	void set_type(uint8_t t) { ver_type = (ver_type & 0xf) | (t << 4); }
 
 	// Type of the first extension header
-	byte ext;
+	uint8_t ext;
 	// connection ID
 	uint16_big connid;
 	uint32_big tv_usec;
@@ -135,9 +135,9 @@ struct PACKED_ATTRIBUTE PacketFormatV1 {
 
 struct PACKED_ATTRIBUTE PacketFormatAckV1 {
 	PacketFormatV1 pf;
-	byte ext_next;
-	byte ext_len;
-	byte acks[4];
+	uint8_t ext_next;
+	uint8_t ext_len;
+	uint8_t acks[4];
 };
 
 #if (defined(__SVR4) && defined(__sun))
@@ -180,7 +180,7 @@ struct OutgoingPacket {
 	uint64_t time_sent; // microseconds
 	uint transmissions:31;
 	bool need_resend:1;
-	byte data[1];
+	uint8_t data[1];
 };
 
 struct SizableCircularBuffer {
@@ -403,7 +403,7 @@ struct UTPSocket {
 	uint16_t retransmit_count;
 
 	uint16_t reorder_count;
-	byte duplicate_ack;
+	uint8_t duplicate_ack;
 
 	// the number of packets in the send queue. Packets that haven't
 	// yet been sent count as well as packets marked as needing resend
@@ -508,7 +508,7 @@ struct UTPSocket {
 	DelayHist their_hist;
 
 	// extension bytes from SYN packet
-	byte extensions[8];
+	uint8_t extensions[8];
 
 	// MTU Discovery
 	// time when we should restart the MTU discovery
@@ -643,7 +643,7 @@ struct UTPSocket {
 		return get_udp_overhead() + get_header_size();
 	}
 
-	void send_data(byte* b, size_t length, bandwidth_type_t type, uint32_t flags = 0);
+	void send_data(uint8_t* b, size_t length, bandwidth_type_t type, uint32_t flags = 0);
 
 	void send_ack(bool synack = false);
 
@@ -665,8 +665,8 @@ struct UTPSocket {
 
 	void check_timeouts();
 	int ack_packet(uint16_t seq);
-	size_t selective_ack_bytes(uint base, const byte* mask, byte len, int64_t& min_rtt);
-	void selective_ack(uint base, const byte *mask, byte len);
+	size_t selective_ack_bytes(uint base, const uint8_t* mask, uint8_t len, int64_t& min_rtt);
+	void selective_ack(uint base, const uint8_t *mask, uint8_t len);
 	void apply_ccontrol(size_t bytes_acked, uint32_t actual_delay, int64_t min_rtt);
 	size_t get_packet_size() const;
 };
@@ -705,7 +705,7 @@ static void utp_register_sent_packet(utp_context *ctx, size_t length)
 	}
 }
 
-void send_to_addr(utp_context *ctx, const byte *p, size_t len, const PackedSockAddr &addr, int flags = 0)
+void send_to_addr(utp_context *ctx, const uint8_t *p, size_t len, const PackedSockAddr &addr, int flags = 0)
 {
 	socklen_t tolen;
 	SOCKADDR_STORAGE to = addr.get_sockaddr_storage(&tolen);
@@ -727,7 +727,7 @@ void UTPSocket::schedule_ack()
 	}
 }
 
-void UTPSocket::send_data(byte* b, size_t length, bandwidth_type_t type, uint32_t flags)
+void UTPSocket::send_data(uint8_t* b, size_t length, bandwidth_type_t type, uint32_t flags)
 {
 	// time stamp this packet with local time, the stamp goes into
 	// the header of every packet at the 8th byte for 8 bytes :
@@ -813,10 +813,10 @@ void UTPSocket::send_ack(bool synack)
 				#endif
 			}
 		}
-		pfa.acks[0] = (byte)m;
-		pfa.acks[1] = (byte)(m >> 8);
-		pfa.acks[2] = (byte)(m >> 16);
-		pfa.acks[3] = (byte)(m >> 24);
+		pfa.acks[0] = (uint8_t)m;
+		pfa.acks[1] = (uint8_t)(m >> 8);
+		pfa.acks[2] = (uint8_t)(m >> 16);
+		pfa.acks[3] = (uint8_t)(m >> 24);
 		len += 4 + 2;
 
 		#if UTP_DEBUG_LOGGING
@@ -828,7 +828,7 @@ void UTPSocket::send_ack(bool synack)
 		#endif
 	}
 
-	send_data((byte*)&pfa, len, ack_overhead);
+	send_data((uint8_t*)&pfa, len, ack_overhead);
 	removeSocketFromAckList(this);
 }
 
@@ -862,7 +862,7 @@ void UTPSocket::send_rst(utp_context *ctx,
 
 //	LOG_DEBUG("%s: Sending RST id:%u seq_nr:%u ack_nr:%u", addrfmt(addr, addrbuf), conn_id_send, seq_nr, ack_nr);
 //	LOG_DEBUG("send %s len:%u id:%u", addrfmt(addr, addrbuf), (uint)len, conn_id_send);
-	send_to_addr(ctx, (const byte*)&pf1, len, addr);
+	send_to_addr(ctx, (const uint8_t*)&pf1, len, addr);
 }
 
 void UTPSocket::send_packet(OutgoingPacket *pkt)
@@ -923,7 +923,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
  	}
 
 	pkt->transmissions++;
-	send_data((byte*)pkt->data, pkt->length,
+	send_data((uint8_t*)pkt->data, pkt->length,
 		(state == CS_SYN_SENT) ? connect_overhead
 		: (pkt->transmissions == 1) ? payload_bandwidth
 		: retransmit_overhead, use_as_mtu_probe ? UTP_UDP_DONTFRAG : 0);
@@ -1064,7 +1064,7 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 				p += num;
 
 				iovec[i].iov_len -= num;
-				iovec[i].iov_base = (byte*)iovec[i].iov_base + num;	// iovec[i].iov_base += num, but without void* pointers
+				iovec[i].iov_base = (uint8_t*)iovec[i].iov_base + num;	// iovec[i].iov_base += num, but without void* pointers
 				needed -= num;
 			}
 
@@ -1401,7 +1401,7 @@ int UTPSocket::ack_packet(uint16_t seq)
 }
 
 // count the number of bytes that were acked by the EACK header
-size_t UTPSocket::selective_ack_bytes(uint base, const byte* mask, byte len, int64_t& min_rtt)
+size_t UTPSocket::selective_ack_bytes(uint base, const uint8_t* mask, uint8_t len, int64_t& min_rtt)
 {
 	if (cur_window_packets == 0) return 0;
 
@@ -1439,7 +1439,7 @@ size_t UTPSocket::selective_ack_bytes(uint base, const byte* mask, byte len, int
 
 enum { MAX_EACK = 128 };
 
-void UTPSocket::selective_ack(uint base, const byte *mask, byte len)
+void UTPSocket::selective_ack(uint base, const uint8_t *mask, uint8_t len)
 {
 	if (cur_window_packets == 0) return;
 
@@ -1765,14 +1765,14 @@ size_t UTPSocket::get_packet_size() const
 // Process an incoming packet
 // syn is true if this is the first packet received. It will cut off parsing
 // as soon as the header is done
-size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, bool syn = false)
+size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, bool syn = false)
 {
 	utp_register_recv_packet(conn, len);
 
 	conn->ctx->current_ms = utp_call_get_milliseconds(conn->ctx, conn);
 
 	const PacketFormatV1 *pf1 = (PacketFormatV1*)packet;
-	const byte *packet_end = packet + len;
+	const uint8_t *packet_end = packet + len;
 
 	uint16_t pk_seq_nr = pf1->seq_nr;
 	uint16_t pk_ack_nr = pf1->ack_nr;
@@ -1813,11 +1813,11 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 	// TODO: maybe send a ST_RESET if we're in CS_RESET?
 
-	const byte *selack_ptr = NULL;
+	const uint8_t *selack_ptr = NULL;
 
 	// Unpack UTP packet options
 	// Data pointer
-	const byte *data = (const byte*)pf1 + conn->get_header_size();
+	const uint8_t *data = (const uint8_t*)pf1 + conn->get_header_size();
 	if (conn->get_header_size() > len) {
 
 		#if UTP_DEBUG_LOGGING
@@ -2385,7 +2385,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 
 			// Check if there are additional buffers in the reorder buffers
 			// that need delivery.
-			byte *p = (byte*)conn->inbuf.get(conn->ack_nr+1);
+			uint8_t *p = (uint8_t*)conn->inbuf.get(conn->ack_nr+1);
 			if (p == NULL)
 				break;
 			conn->inbuf.put(conn->ack_nr+1, NULL);
@@ -2450,7 +2450,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 		}
 
 		// Allocate memory to fit the packet that needs to re-ordered
-		byte *mem = (byte*)malloc((packet_end - data) + sizeof(uint));
+		uint8_t *mem = (uint8_t*)malloc((packet_end - data) + sizeof(uint));
 		*(uint*)mem = (uint)(packet_end - data);
 		memcpy(mem + sizeof(uint), data, packet_end - data);
 
@@ -2477,7 +2477,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	return (size_t)(packet_end - data);
 }
 
-inline byte UTP_Version(PacketFormatV1 const* pf)
+inline uint8_t UTP_Version(PacketFormatV1 const* pf)
 {
 	return (pf->type() < ST_NUM_STATES && pf->ext < 3 ? pf->version() : 0);
 }
@@ -2809,7 +2809,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 }
 
 // Returns 1 if the UDP payload was recognized as a UTP packet, or 0 if it was not
-int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
+int utp_process_udp(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
 {
 	assert(ctx);
 	if (!ctx) return 0;
@@ -2830,7 +2830,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 	}
 
 	const PacketFormatV1 *pf1 = (PacketFormatV1*)buffer;
-	const byte version = UTP_Version(pf1);
+	const uint8_t version = UTP_Version(pf1);
 	const uint32_t id = uint32_t(pf1->connid);
 
 	if (version != 1) {
@@ -2846,7 +2846,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 	ctx->log(UTP_LOG_DEBUG, NULL, "recv id:%u seq_nr:%u ack_nr:%u", id, (uint)pf1->seq_nr, (uint)pf1->ack_nr);
 	#endif
 
-	const byte flags = pf1->type();
+	const uint8_t flags = pf1->type();
 
 	if (flags == ST_RESET) {
 		// id is either our recv id or our send id
@@ -3017,7 +3017,7 @@ int utp_process_udp(utp_context *ctx, const byte *buffer, size_t len, const stru
 }
 
 // Called by utp_process_icmp_fragmentation() and utp_process_icmp_error() below
-static UTPSocket* parse_icmp_payload(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
+static UTPSocket* parse_icmp_payload(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
 {
 	assert(ctx);
 	if (!ctx) return NULL;
@@ -3042,7 +3042,7 @@ static UTPSocket* parse_icmp_payload(utp_context *ctx, const byte *buffer, size_
 	}
 
 	const PacketFormatV1 *pf = (PacketFormatV1*)buffer;
-	const byte version = UTP_Version(pf);
+	const uint8_t version = UTP_Version(pf);
 	const uint32_t id = uint32_t(pf->connid);
 
 	if (version != 1) {
@@ -3077,7 +3077,7 @@ static UTPSocket* parse_icmp_payload(utp_context *ctx, const byte *buffer, size_
 // @to: destination address of the original UDP pakcet
 // @tolen: address length
 // @next_hop_mtu: 
-int utp_process_icmp_fragmentation(utp_context *ctx, const byte* buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16_t next_hop_mtu)
+int utp_process_icmp_fragmentation(utp_context *ctx, const uint8_t* buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16_t next_hop_mtu)
 {
 	UTPSocket* conn = parse_icmp_payload(ctx, buffer, len, to, tolen);
 	if (!conn) return 0;
@@ -3115,7 +3115,7 @@ int utp_process_icmp_fragmentation(utp_context *ctx, const byte* buffer, size_t 
 // @len: buffer length
 // @to: destination address of the original UDP pakcet
 // @tolen: address length
-int utp_process_icmp_error(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
+int utp_process_icmp_error(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen)
 {
 	UTPSocket* conn = parse_icmp_payload(ctx, buffer, len, to, tolen);
 	if (!conn) return 0;
@@ -3466,7 +3466,7 @@ void struct_utp_context::log_unchecked(utp_socket *socket, char const *fmt, ...)
 	buf[4095] = '\0';
 	va_end(va);
 
-	utp_call_log(this, socket, (const byte *)buf);
+	utp_call_log(this, socket, (const uint8_t *)buf);
 }
 
 inline bool struct_utp_context::would_log(int level)

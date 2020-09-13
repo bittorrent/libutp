@@ -78,7 +78,6 @@
 #endif
 
 // standard types
-typedef unsigned char byte;
 typedef unsigned int uint;
 
 // always ANSI

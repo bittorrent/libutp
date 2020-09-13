@@ -102,7 +102,7 @@ typedef struct {
 	size_t len;
 	uint32_t flags;
 	int callback_type;
-	const byte *buf;
+	const uint8_t *buf;
 
 	union {
 		const struct sockaddr *address;
@@ -154,9 +154,9 @@ void*			utp_context_set_userdata		(utp_context *ctx, void *userdata);
 void*			utp_context_get_userdata		(utp_context *ctx);
 int				utp_context_set_option			(utp_context *ctx, int opt, int val);
 int				utp_context_get_option			(utp_context *ctx, int opt);
-int				utp_process_udp					(utp_context *ctx, const byte *buf, size_t len, const struct sockaddr *to, socklen_t tolen);
-int				utp_process_icmp_error			(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
-int				utp_process_icmp_fragmentation	(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16_t next_hop_mtu);
+int				utp_process_udp					(utp_context *ctx, const uint8_t *buf, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_error			(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_fragmentation	(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16_t next_hop_mtu);
 void			utp_check_timeouts				(utp_context *ctx);
 void			utp_issue_deferred_acks			(utp_context *ctx);
 utp_context_stats* utp_get_context_stats		(utp_context *ctx);
