@@ -77,9 +77,6 @@
 	typedef struct sockaddr_storage SOCKADDR_STORAGE;
 #endif
 
-// standard types
-typedef unsigned int uint;
-
 // always ANSI
 typedef const char * cstr;
 typedef char * str;

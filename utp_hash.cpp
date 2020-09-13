@@ -85,10 +85,10 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	return hash;
 }
 
-uint utp_hash_mem(const void *keyp, size_t keysize)
+unsigned int utp_hash_mem(const void *keyp, size_t keysize)
 {
-	uint hash = 0;
-	uint n = keysize;
+	unsigned int hash = 0;
+	unsigned int n = keysize;
 	while (n >= 4) {
 		hash ^= Read32(keyp);
 		keyp = (uint8_t*)keyp + sizeof(uint32_t);
@@ -104,7 +104,7 @@ uint utp_hash_mem(const void *keyp, size_t keysize)
 	return hash;
 }
 
-uint utp_hash_mkidx(utp_hash_t *hash, const void *keyp)
+unsigned int utp_hash_mkidx(utp_hash_t *hash, const void *keyp)
 {
 	// Generate a key from the hash
 	return hash->hash_compute(keyp, hash->K) % hash->N;

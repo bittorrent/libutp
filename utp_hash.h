@@ -38,7 +38,7 @@ typedef uint32_t utp_link_t;
 #endif
 
 typedef uint32_t (*utp_hash_compute_t)(const void *keyp, size_t keysize);
-typedef uint (*utp_hash_equal_t)(const void *key_a, const void *key_b, size_t keysize);
+typedef unsigned int (*utp_hash_equal_t)(const void *key_a, const void *key_b, size_t keysize);
 
 // In memory the HashTable is laid out as follows:
 //  ---------------------------- low
@@ -98,8 +98,8 @@ struct utp_hash_iterator_t {
 	utp_hash_iterator_t() : bucket(0xffffffff), elem(0xffffffff) {}
 };
 
-uint utp_hash_mem(const void *keyp, size_t keysize);
-uint utp_hash_comp(const void *key_a, const void *key_b, size_t keysize);
+unsigned int utp_hash_mem(const void *keyp, size_t keysize);
+unsigned int utp_hash_comp(const void *key_a, const void *key_b, size_t keysize);
 
 utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, utp_hash_compute_t hashfun = utp_hash_mem, utp_hash_equal_t eqfun = NULL);
 void *utp_hash_lookup(utp_hash_t *hash, const void *key);
@@ -126,7 +126,7 @@ void utp_hash_free_mem(utp_hash_t *hash);
 template<typename K, typename T> class utpHashTable {
 	utp_hash_t *hash;
 public:
-	static uint compare(const void *k1, const void *k2, size_t ks) {
+	static unsigned int compare(const void *k1, const void *k2, size_t ks) {
 		return *((K*)k1) == *((K*)k2);
 	}
 	static uint32_t compute_hash(const void *k, size_t ks) {
