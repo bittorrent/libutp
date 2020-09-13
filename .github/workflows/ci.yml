@@ -1,0 +1,44 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        os: [linux, windows, macos]
+        build_type: [Debug, Release]
+        arch: [x86, x64]
+        exclude:
+        - os: linux
+          build_type: Debug
+        - os: linux
+          arch: x86
+        - os: macos
+          build_type: Debug
+        - os: macos
+          arch: x86
+        include:
+        - os: linux
+          runner: ubuntu-latest
+        - os: windows
+          runner: windows-latest
+        - os: windows
+          arch: x86
+          msbuild_args: -property:Platform=Win32
+        - os: windows
+          arch: x64
+          msbuild_args: -property:Platform=x64
+        - os: macos
+          runner: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Build (non-Windows)
+      if: matrix.os != 'windows'
+      run: make
+    - name: Add msbuild to PATH
+      if: matrix.os == 'windows'
+      uses: microsoft/setup-msbuild@v1.0.1
+    - name: Build (Windows)
+      if: matrix.os == 'windows'
+      run: msbuild -property:PlatformToolset=v142 -property:Configuration=${{ matrix.build_type }} ${{ matrix.msbuild_args }} libutp.vcxproj
