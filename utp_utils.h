@@ -20,8 +20,8 @@
  * THE SOFTWARE.
  */
 
-uint64 utp_default_get_udp_mtu(utp_callback_arguments *args);
-uint64 utp_default_get_udp_overhead(utp_callback_arguments *args);
-uint64 utp_default_get_random(utp_callback_arguments *args);
-uint64 utp_default_get_milliseconds(utp_callback_arguments *args);
-uint64 utp_default_get_microseconds(utp_callback_arguments *args);
+uint64_t utp_default_get_udp_mtu(utp_callback_arguments *args);
+uint64_t utp_default_get_udp_overhead(utp_callback_arguments *args);
+uint64_t utp_default_get_random(utp_callback_arguments *args);
+uint64_t utp_default_get_milliseconds(utp_callback_arguments *args);
+uint64_t utp_default_get_microseconds(utp_callback_arguments *args);

@@ -56,7 +56,7 @@ bool PackedSockAddr::operator!=(const PackedSockAddr& rhs) const
 	return !(*this == rhs);
 }
 
-uint32 PackedSockAddr::compute_hash() const {
+uint32_t PackedSockAddr::compute_hash() const {
 	return utp_hash_mem(&_in, sizeof(_in)) ^ _port;
 }
 
@@ -124,7 +124,7 @@ cstr PackedSockAddr::fmt(str s, size_t len) const
 	const byte family = get_family();
 	str i;
 	if (family == AF_INET) {
-		INET_NTOP(family, (uint32*)&_sin4, s, len);
+		INET_NTOP(family, (uint32_t*)&_sin4, s, len);
 		i = s;
 		while (*++i) {}
 	} else {

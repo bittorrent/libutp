@@ -30,14 +30,14 @@
 #include "utp_templates.h"
 
 // TODO: make utp_link_t a template parameter to HashTable
-typedef uint32 utp_link_t;
+typedef uint32_t utp_link_t;
 
 #ifdef _MSC_VER
 // Silence the warning about the C99-compliant zero-length array at the end of the structure
 #pragma warning (disable: 4200)
 #endif
 
-typedef uint32 (*utp_hash_compute_t)(const void *keyp, size_t keysize);
+typedef uint32_t (*utp_hash_compute_t)(const void *keyp, size_t keysize);
 typedef uint (*utp_hash_equal_t)(const void *key_a, const void *key_b, size_t keysize);
 
 // In memory the HashTable is laid out as follows:
@@ -129,7 +129,7 @@ public:
 	static uint compare(const void *k1, const void *k2, size_t ks) {
 		return *((K*)k1) == *((K*)k2);
 	}
-	static uint32 compute_hash(const void *k, size_t ks) {
+	static uint32_t compute_hash(const void *k, size_t ks) {
 		return ((K*)k)->compute_hash();
 	}
 	void Init() { hash = NULL; }

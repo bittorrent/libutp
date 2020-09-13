@@ -47,22 +47,22 @@ typedef ULONGLONG (WINAPI GetTickCount64Proc)(void);
 static GetTickCount64Proc *pt2GetTickCount64;
 static GetTickCount64Proc *pt2RealGetTickCount;
 
-static uint64 startPerformanceCounter;
-static uint64 startGetTickCount;
+static uint64_t startPerformanceCounter;
+static uint64_t startGetTickCount;
 // MSVC 6 standard doesn't like division with uint64s
 static double counterPerMicrosecond;
 
-static uint64 UTGetTickCount64()
+static uint64_t UTGetTickCount64()
 {
 	if (pt2GetTickCount64) {
 		return pt2GetTickCount64();
 	}
 	if (pt2RealGetTickCount) {
-		uint64 v = pt2RealGetTickCount();
+		uint64_t v = pt2RealGetTickCount();
 		// fix return value from GetTickCount
 		return (DWORD)v | ((v >> 0x18) & 0xFFFFFFFF00000000);
 	}
-	return (uint64)GetTickCount();
+	return (uint64_t)GetTickCount();
 }
 
 static void Time_Initialize()
@@ -72,16 +72,16 @@ static void Time_Initialize()
 	// not a typo. GetTickCount actually returns 64 bits
 	pt2RealGetTickCount = (GetTickCount64Proc*)GetProcAddress(kernel32, "GetTickCount");
 
-	uint64 frequency;
+	uint64_t frequency;
 	QueryPerformanceCounter((LARGE_INTEGER*)&startPerformanceCounter);
 	QueryPerformanceFrequency((LARGE_INTEGER*)&frequency);
 	counterPerMicrosecond = (double)frequency / 1000000.0f;
 	startGetTickCount = UTGetTickCount64();
 }
 
-static int64 abs64(int64 x) { return x < 0 ? -x : x; }
+static int64_t abs64(int64_t x) { return x < 0 ? -x : x; }
 
-static uint64 __GetMicroseconds()
+static uint64_t __GetMicroseconds()
 {
 	static bool time_init = false;
 	if (!time_init) {
@@ -89,41 +89,41 @@ static uint64 __GetMicroseconds()
 		Time_Initialize();
 	}
 
-	uint64 counter;
-	uint64 tick;
+	uint64_t counter;
+	uint64_t tick;
 
 	QueryPerformanceCounter((LARGE_INTEGER*) &counter);
 	tick = UTGetTickCount64();
 
 	// unfortunately, QueryPerformanceCounter is not guaranteed
 	// to be monotonic. Make it so.
-	int64 ret = (int64)(((int64)counter - (int64)startPerformanceCounter) / counterPerMicrosecond);
+	int64_t ret = (int64_t)(((int64_t)counter - (int64_t)startPerformanceCounter) / counterPerMicrosecond);
 	// if the QPC clock leaps more than one second off GetTickCount64()
 	// something is seriously fishy. Adjust QPC to stay monotonic
-	int64 tick_diff = tick - startGetTickCount;
+	int64_t tick_diff = tick - startGetTickCount;
 	if (abs64(ret / 100000 - tick_diff / 100) > 10) {
-		startPerformanceCounter -= (uint64)((int64)(tick_diff * 1000 - ret) * counterPerMicrosecond);
-		ret = (int64)((counter - startPerformanceCounter) / counterPerMicrosecond);
+		startPerformanceCounter -= (uint64_t)((int64_t)(tick_diff * 1000 - ret) * counterPerMicrosecond);
+		ret = (int64_t)((counter - startPerformanceCounter) / counterPerMicrosecond);
 	}
 	return ret;
 }
 
-static inline uint64 UTP_GetMilliseconds()
+static inline uint64_t UTP_GetMilliseconds()
 {
 	return GetTickCount();
 }
 
 #else //!WIN32
 
-static inline uint64 UTP_GetMicroseconds(void);
-static inline uint64 UTP_GetMilliseconds()
+static inline uint64_t UTP_GetMicroseconds(void);
+static inline uint64_t UTP_GetMilliseconds()
 {
 	return UTP_GetMicroseconds() / 1000;
 }
 
 #if defined(__APPLE__)
 
-static uint64 __GetMicroseconds()
+static uint64_t __GetMicroseconds()
 {
 	// http://developer.apple.com/mac/library/qa/qa2004/qa1398.html
 	// http://www.macresearch.org/tutorial_performance_and_time
@@ -172,12 +172,12 @@ static uint64_t __GetMicroseconds()
 		if (have_posix_clocks) {
 			struct timespec ts;
 			rc = clock_gettime(CLOCK_MONOTONIC, &ts);
-			return uint64(ts.tv_sec) * 1000000 + uint64(ts.tv_nsec) / 1000;
+			return uint64_t(ts.tv_sec) * 1000000 + uint64_t(ts.tv_nsec) / 1000;
 		}
 	#endif
 
 	gettimeofday(&tv, NULL);
-	return uint64(tv.tv_sec) * 1000000 + tv.tv_usec;
+	return uint64_t(tv.tv_sec) * 1000000 + tv.tv_usec;
 }
 
 #endif //!__APPLE__
@@ -194,11 +194,11 @@ static uint64_t __GetMicroseconds()
  * time is likely to happen, this protects all versions.
  */
 
-static inline uint64 UTP_GetMicroseconds()
+static inline uint64_t UTP_GetMicroseconds()
 {
-	static uint64 offset = 0, previous = 0;
+	static uint64_t offset = 0, previous = 0;
 
-	uint64 now = __GetMicroseconds() + offset;
+	uint64_t now = __GetMicroseconds() + offset;
 	if (previous > now) {
 		/* Eek! */
 		offset += previous - now;
@@ -229,26 +229,26 @@ static inline uint64 UTP_GetMicroseconds()
 #define UDP_IPV6_MTU (ETHERNET_MTU - IPV6_HEADER_SIZE - UDP_HEADER_SIZE - GRE_HEADER_SIZE - PPPOE_HEADER_SIZE - MPPE_HEADER_SIZE - FUDGE_HEADER_SIZE)
 #define UDP_TEREDO_MTU (TEREDO_MTU - IPV6_HEADER_SIZE - UDP_HEADER_SIZE)
 
-uint64 utp_default_get_udp_mtu(utp_callback_arguments *args) {
+uint64_t utp_default_get_udp_mtu(utp_callback_arguments *args) {
 	// Since we don't know the local address of the interface,
 	// be conservative and assume all IPv6 connections are Teredo.
 	return (args->address->sa_family == AF_INET6) ? UDP_TEREDO_MTU : UDP_IPV4_MTU;
 }
 
-uint64 utp_default_get_udp_overhead(utp_callback_arguments *args) {
+uint64_t utp_default_get_udp_overhead(utp_callback_arguments *args) {
 	// Since we don't know the local address of the interface,
 	// be conservative and assume all IPv6 connections are Teredo.
 	return (args->address->sa_family == AF_INET6) ? UDP_TEREDO_OVERHEAD : UDP_IPV4_OVERHEAD;
 }
 
-uint64 utp_default_get_random(utp_callback_arguments *args) {
+uint64_t utp_default_get_random(utp_callback_arguments *args) {
 	return rand();
 }
 
-uint64 utp_default_get_milliseconds(utp_callback_arguments *args) {
+uint64_t utp_default_get_milliseconds(utp_callback_arguments *args) {
 	return UTP_GetMilliseconds();
 }
 
-uint64 utp_default_get_microseconds(utp_callback_arguments *args) {
+uint64_t utp_default_get_microseconds(utp_callback_arguments *args) {
 	return UTP_GetMicroseconds();
 }

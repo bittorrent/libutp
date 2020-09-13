@@ -26,15 +26,15 @@
 #define LIBUTP_HASH_UNUSED ((utp_link_t)-1)
 
 #ifdef STRICT_ALIGN
-inline uint32 Read32(const void *p)
+inline uint32_t Read32(const void *p)
 {
-	uint32 tmp;
+	uint32_t tmp;
 	memcpy(&tmp, p, sizeof tmp);
 	return tmp;
 }
 
 #else
-inline uint32 Read32(const void *p) { return *(uint32*)p; }
+inline uint32_t Read32(const void *p) { return *(uint32_t*)p; }
 #endif
 
 
@@ -91,7 +91,7 @@ uint utp_hash_mem(const void *keyp, size_t keysize)
 	uint n = keysize;
 	while (n >= 4) {
 		hash ^= Read32(keyp);
-		keyp = (byte*)keyp + sizeof(uint32);
+		keyp = (byte*)keyp + sizeof(uint32_t);
 		hash = (hash << 13) | (hash >> 19);
 		n -= 4;
 	}

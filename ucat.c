@@ -163,7 +163,7 @@ out:
 	}
 }
 
-uint64 callback_on_read(utp_callback_arguments *a)
+uint64_t callback_on_read(utp_callback_arguments *a)
 {
 	const unsigned char *p;
 	ssize_t len, left;
@@ -181,7 +181,7 @@ uint64 callback_on_read(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_firewall(utp_callback_arguments *a)
+uint64_t callback_on_firewall(utp_callback_arguments *a)
 {
 	if (! o_listen) {
 		debug("Firewalling unexpected inbound connection in non-listen mode\n");
@@ -197,7 +197,7 @@ uint64 callback_on_firewall(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_accept(utp_callback_arguments *a)
+uint64_t callback_on_accept(utp_callback_arguments *a)
 {
 	assert(!s);
 	s = a->socket;
@@ -206,7 +206,7 @@ uint64 callback_on_accept(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_error(utp_callback_arguments *a)
+uint64_t callback_on_error(utp_callback_arguments *a)
 {
 	fprintf(stderr, "Error: %s\n", utp_error_code_names[a->error_code]);
 	utp_close(s);
@@ -216,7 +216,7 @@ uint64 callback_on_error(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_state_change(utp_callback_arguments *a)
+uint64_t callback_on_state_change(utp_callback_arguments *a)
 {
 	debug("state %d: %s\n", a->state, utp_state_names[a->state]);
 	utp_socket_stats *stats;
@@ -262,7 +262,7 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_sendto(utp_callback_arguments *a)
+uint64_t callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
@@ -276,7 +276,7 @@ uint64 callback_sendto(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_log(utp_callback_arguments *a)
+uint64_t callback_log(utp_callback_arguments *a)
 {
 	fprintf(stderr, "log: %s\n", a->buf);
 	return 0;
