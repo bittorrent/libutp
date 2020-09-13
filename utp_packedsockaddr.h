@@ -52,7 +52,7 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	PackedSockAddr(void);
 
 	SOCKADDR_STORAGE get_sockaddr_storage(socklen_t *len) const;
-	cstr fmt(char *s, size_t len) const;
+	const char *fmt(char *s, size_t len) const;
 
 	uint32_t compute_hash() const;
 } ALIGNED_ATTRIBUTE(4);

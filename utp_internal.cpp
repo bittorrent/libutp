@@ -155,7 +155,7 @@ enum {
 	ST_NUM_STATES,		// used for bounds checking
 };
 
-static const cstr flagnames[] = {
+static const char *const flagnames[] = {
 	"ST_DATA","ST_FIN","ST_STATE","ST_RESET","ST_SYN"
 };
 
@@ -170,7 +170,7 @@ enum CONN_STATE {
 	CS_DESTROY
 };
 
-static const cstr statenames[] = {
+static const char *const statenames[] = {
 	"UNINITIALIZED", "IDLE","SYN_SENT", "SYN_RECV", "CONNECTED","CONNECTED_FULL","DESTROY_DELAY","RESET","DESTROY"
 };
 
