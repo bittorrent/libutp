@@ -70,8 +70,7 @@
 #endif
 
 #ifdef _MSC_VER
-	#include <BaseTsd.h>
-	typedef SSIZE_T ssize_t;
+	typedef intptr_t ssize_t;
 #endif
 
 #ifdef POSIX
