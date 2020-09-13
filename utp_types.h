@@ -23,6 +23,7 @@
 #ifndef __UTP_TYPES_H__
 #define __UTP_TYPES_H__
 
+#include <stdbool.h>
 #include <stdint.h>
 
 // Allow libutp consumers or prerequisites to override PACKED_ATTRIBUTE
@@ -75,10 +76,6 @@
 
 #ifdef POSIX
 	typedef struct sockaddr_storage SOCKADDR_STORAGE;
-#endif
-
-#ifndef __cplusplus
-typedef uint8_t bool;
 #endif
 
 #endif //__UTP_TYPES_H__
