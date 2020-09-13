@@ -79,7 +79,6 @@
 
 // always ANSI
 typedef const char * cstr;
-typedef char * str;
 
 #ifndef __cplusplus
 typedef uint8_t bool;

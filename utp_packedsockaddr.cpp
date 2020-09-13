@@ -118,11 +118,11 @@ SOCKADDR_STORAGE PackedSockAddr::get_sockaddr_storage(socklen_t *len = NULL) con
 }
 
 // #define addrfmt(x, s) x.fmt(s, sizeof(s))
-cstr PackedSockAddr::fmt(str s, size_t len) const
+cstr PackedSockAddr::fmt(char *s, size_t len) const
 {
 	memset(s, 0, len);
 	const uint8_t family = get_family();
-	str i;
+	char *i;
 	if (family == AF_INET) {
 		INET_NTOP(family, (uint32_t*)&_sin4, s, len);
 		i = s;
