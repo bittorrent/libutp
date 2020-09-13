@@ -78,12 +78,6 @@
 	typedef struct sockaddr_storage SOCKADDR_STORAGE;
 #endif
 
-#ifdef WIN32
-	#define I64u "%I64u"
-#else
-	#define I64u "%Lu"
-#endif
-
 // standard types
 typedef unsigned char byte;
 typedef unsigned int uint;

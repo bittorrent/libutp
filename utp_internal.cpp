@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -760,7 +761,7 @@ void UTPSocket::send_data(byte* b, size_t length, bandwidth_type_t type, uint32_
 	int flags2 = b1->type();
 	uint16_t seq_nr = b1->seq_nr;
 	uint16_t ack_nr = b1->ack_nr;
-	log(UTP_LOG_DEBUG, "send %s len:%u id:%u timestamp:" I64u " reply_micro:%u flags:%s seq_nr:%u ack_nr:%u",
+	log(UTP_LOG_DEBUG, "send %s len:%u id:%u timestamp:" PRIu64 " reply_micro:%u flags:%s seq_nr:%u ack_nr:%u",
 		addrfmt(addr, addrbuf), (uint)length, conn_id_send, time, reply_micro, flagnames[flags2],
 		seq_nr, ack_nr);
 #endif
@@ -1712,11 +1713,11 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32_t actual_delay, int64_
 	// used in parse_log.py
 	log(UTP_LOG_NORMAL, "actual_delay:%u our_delay:%d their_delay:%u off_target:%d max_window:%u "
 			"delay_base:%u delay_sum:%d target_delay:%d acked_bytes:%u cur_window:%u "
-			"scaled_gain:%f rtt:%u rate:%u wnduser:%u rto:%u timeout:%d get_microseconds:" I64u " "
+			"scaled_gain:%f rtt:%u rate:%u wnduser:%u rto:%u timeout:%d get_microseconds:" PRIu64 " "
 			"cur_window_packets:%u packet_size:%u their_delay_base:%u their_actual_delay:%u "
-			"average_delay:%d clock_drift:%d clock_drift_raw:%d delay_penalty:%d current_delay_sum:" I64u
-			"current_delay_samples:%d average_delay_base:%d last_maxed_out_window:" I64u " opt_sndbuf:%d "
-			"current_ms:" I64u "",
+			"average_delay:%d clock_drift:%d clock_drift_raw:%d delay_penalty:%d current_delay_sum:" PRIu64
+			"current_delay_samples:%d average_delay_base:%d last_maxed_out_window:" PRIu64 " opt_sndbuf:%d "
+			"current_ms:" PRIu64 "",
 			actual_delay, our_delay / 1000, their_hist.get_value() / 1000,
 			int(off_target / 1000), uint(max_window), uint32_t(our_hist.delay_base),
 			int((our_delay + their_hist.get_value()) / 1000), int(target / 1000), uint(bytes_acked),
@@ -1780,7 +1781,7 @@ size_t utp_process_incoming(UTPSocket *conn, const byte *packet, size_t len, boo
 	if (pk_flags >= ST_NUM_STATES) return 0;
 
 	#if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "Got %s. seq_nr:%u ack_nr:%u state:%s timestamp:" I64u " reply_micro:%u"
+	conn->log(UTP_LOG_DEBUG, "Got %s. seq_nr:%u ack_nr:%u state:%s timestamp:" PRIu64 " reply_micro:%u"
 		, flagnames[pk_flags], pk_seq_nr, pk_ack_nr, statenames[conn->state]
 		, uint64_t(pf1->tv_usec), (uint32_t)(pf1->reply_micro));
 	#endif
