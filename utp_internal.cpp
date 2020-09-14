@@ -575,7 +575,7 @@ struct UTPSocket {
 		va_end(va);
 		buf[4095] = '\0';
 
-		snprintf(buf2, 4096, "%p %s %06u %s", this, addrfmt(addr, addrbuf), conn_id_recv, buf);
+		snprintf(buf2, 4096, "%p %s %06" PRIu32 " %s", this, addrfmt(addr, addrbuf), conn_id_recv, buf);
 		buf2[4095] = '\0';
 
 		ctx->log_unchecked(this, buf2);
@@ -761,7 +761,7 @@ void UTPSocket::send_data(uint8_t* b, size_t length, bandwidth_type_t type, uint
 	int flags2 = b1->type();
 	uint16_t seq_nr = b1->seq_nr;
 	uint16_t ack_nr = b1->ack_nr;
-	log(UTP_LOG_DEBUG, "send %s len:%u id:%u timestamp:" PRIu64 " reply_micro:%u flags:%s seq_nr:%u ack_nr:%u",
+	log(UTP_LOG_DEBUG, "send %s len:%u id:%" PRIu32 " timestamp:" PRIu64 " reply_micro:%" PRIu32 " flags:%s seq_nr:%" PRIu16 " ack_nr:%" PRIu16,
 		addrfmt(addr, addrbuf), (unsigned int)length, conn_id_send, time, reply_micro, flagnames[flags2],
 		seq_nr, ack_nr);
 #endif
@@ -820,11 +820,11 @@ void UTPSocket::send_ack(bool synack)
 		len += 4 + 2;
 
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "Sending EACK %u [%u] bits:[%032b]", ack_nr, conn_id_send, m);
+		log(UTP_LOG_DEBUG, "Sending EACK %" PRIu16 " [%" PRIu32 "] bits:[%032b]", ack_nr, conn_id_send, m);
 		#endif
 	} else {
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "Sending ACK %u [%u]", ack_nr, conn_id_send);
+		log(UTP_LOG_DEBUG, "Sending ACK %" PRIu16 " [%" PRIu32 "]", ack_nr, conn_id_send);
 		#endif
 	}
 
@@ -837,7 +837,7 @@ void UTPSocket::send_keep_alive()
 	ack_nr--;
 
 	#if UTP_DEBUG_LOGGING
-	log(UTP_LOG_DEBUG, "Sending KeepAlive ACK %u [%u]", ack_nr, conn_id_send);
+	log(UTP_LOG_DEBUG, "Sending KeepAlive ACK %" PRIu16 " [%" PRIu32 "]", ack_nr, conn_id_send);
 	#endif
 
 	send_ack();
@@ -860,8 +860,8 @@ void UTPSocket::send_rst(utp_context *ctx,
 	pf1.windowsize = 0;
 	len = sizeof(PacketFormatV1);
 
-//	LOG_DEBUG("%s: Sending RST id:%u seq_nr:%u ack_nr:%u", addrfmt(addr, addrbuf), conn_id_send, seq_nr, ack_nr);
-//	LOG_DEBUG("send %s len:%u id:%u", addrfmt(addr, addrbuf), (unsigned int)len, conn_id_send);
+//	LOG_DEBUG("%s: Sending RST id:%" PRIu32 " seq_nr:%" PRIu16 " ack_nr:%" PRIu16, addrfmt(addr, addrbuf), conn_id_send, seq_nr, ack_nr);
+//	LOG_DEBUG("send %s len:%u id:%" PRIu32, addrfmt(addr, addrbuf), (unsigned int)len, conn_id_send);
 	send_to_addr(ctx, (const uint8_t*)&pf1, len, addr);
 }
 
@@ -918,7 +918,7 @@ void UTPSocket::send_packet(OutgoingPacket *pkt)
 		assert(pkt->length >= mtu_floor);
 		assert(pkt->length <= mtu_ceiling);
  		use_as_mtu_probe = true;
-		log(UTP_LOG_MTU, "MTU [PROBE] floor:%d ceiling:%d current:%d"
+		log(UTP_LOG_MTU, "MTU [PROBE] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 			, mtu_floor, mtu_ceiling, mtu_probe_size);
  	}
 
@@ -940,7 +940,7 @@ bool UTPSocket::is_full(int bytes)
 	if (cur_window_packets >= OUTGOING_BUFFER_MAX_SIZE - 1) {
 
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "is_full:false cur_window_packets:%d MAX:%d", cur_window_packets, OUTGOING_BUFFER_MAX_SIZE - 1);
+		log(UTP_LOG_DEBUG, "is_full:false cur_window_packets:%" PRIu16 " MAX:%d", cur_window_packets, OUTGOING_BUFFER_MAX_SIZE - 1);
 		#endif
 
 		last_maxed_out_window = ctx->current_ms;
@@ -948,7 +948,7 @@ bool UTPSocket::is_full(int bytes)
 	}
 
 	#if UTP_DEBUG_LOGGING
-	log(UTP_LOG_DEBUG, "is_full:%s. cur_window:%u pkt:%u max:%u cur_window_packets:%u max_window:%u"
+	log(UTP_LOG_DEBUG, "is_full:%s. cur_window:%u pkt:%u max:%u cur_window_packets:%" PRIu16 " max_window:%u"
 		, (cur_window + bytes > max_send) ? "true" : "false"
 		, cur_window, bytes, max_send, cur_window_packets
 		, max_window);
@@ -1127,7 +1127,7 @@ void UTPSocket::check_timeouts()
 
 	#if UTP_DEBUG_LOGGING
 	log(UTP_LOG_DEBUG, "CheckTimeouts timeout:%d max_window:%u cur_window:%u "
-			 "state:%s cur_window_packets:%u",
+			 "state:%s cur_window_packets:%" PRIu16,
 			 (int)(rto_timeout - ctx->current_ms), (unsigned int)max_window, (unsigned int)cur_window,
 			 statenames[state], cur_window_packets);
 	#endif
@@ -1160,7 +1160,7 @@ void UTPSocket::check_timeouts()
 				// too big and not because congestion. To accelerate the binary search for
 				// the MTU, resend immediately and don't reset the window size
 				ignore_loss = true;
-				log(UTP_LOG_MTU, "MTU [PROBE-TIMEOUT] floor:%d ceiling:%d current:%d"
+				log(UTP_LOG_MTU, "MTU [PROBE-TIMEOUT] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 					, mtu_floor, mtu_ceiling, mtu_last);
 			}
 			// we dropepd the probe, clear these fields to
@@ -1303,7 +1303,7 @@ void UTPSocket::mtu_search_update()
 	// also set the ceiling to floor to terminate the searching
 	if (mtu_ceiling - mtu_floor <= 16) {
 		mtu_last = mtu_floor;
-		log(UTP_LOG_MTU, "MTU [DONE] floor:%d ceiling:%d current:%d"
+		log(UTP_LOG_MTU, "MTU [DONE] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 			, mtu_floor, mtu_ceiling, mtu_last);
 		mtu_ceiling = mtu_floor;
 		assert(mtu_floor <= mtu_ceiling);
@@ -1317,7 +1317,7 @@ void UTPSocket::mtu_reset()
 	mtu_ceiling = get_udp_mtu();
 	// Less would not pass TCP...
 	mtu_floor = 576;
-	log(UTP_LOG_MTU, "MTU [RESET] floor:%d ceiling:%d current:%d"
+	log(UTP_LOG_MTU, "MTU [RESET] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 		, mtu_floor, mtu_ceiling, mtu_last);
 	assert(mtu_floor <= mtu_ceiling);
 	mtu_discover_time = utp_call_get_milliseconds(this->ctx, this) + 30 * 60 * 1000;
@@ -1335,7 +1335,7 @@ int UTPSocket::ack_packet(uint16_t seq)
 	if (pkt == NULL) {
 
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "got ack for:%u (already acked, or never sent)", seq);
+		log(UTP_LOG_DEBUG, "got ack for:%" PRIu16 " (already acked, or never sent)", seq);
 		#endif
 
 		return 1;
@@ -1345,7 +1345,7 @@ int UTPSocket::ack_packet(uint16_t seq)
 	if (pkt->transmissions == 0) {
 
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "got ack for:%u (never sent, pkt_size:%u need_resend:%u)",
+		log(UTP_LOG_DEBUG, "got ack for:%" PRIu16 " (never sent, pkt_size:%u need_resend:%u)",
 			seq, (unsigned int)pkt->payload, pkt->need_resend);
 		#endif
 
@@ -1353,7 +1353,7 @@ int UTPSocket::ack_packet(uint16_t seq)
 	}
 
 	#if UTP_DEBUG_LOGGING
-	log(UTP_LOG_DEBUG, "got ack for:%u (pkt_size:%u need_resend:%u)",
+	log(UTP_LOG_DEBUG, "got ack for:%" PRIu16 " (pkt_size:%u need_resend:%u)",
 		seq, (unsigned int)pkt->payload, pkt->need_resend);
 	#endif
 
@@ -1381,7 +1381,7 @@ int UTPSocket::ack_packet(uint16_t seq)
 		rto = max<unsigned int>(rtt + rtt_var * 4, 1000);
 
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "rtt:%u avg:%u var:%u rto:%u",
+		log(UTP_LOG_DEBUG, "rtt:%" PRIu32 " avg:%u var:%u rto:%u",
 			ertt, rtt, rtt_var, rto);
 		#endif
 
@@ -1552,7 +1552,7 @@ void UTPSocket::selective_ack(unsigned int base, const uint8_t *mask, uint8_t le
 		} else {
 
 			#if UTP_DEBUG_LOGGING
-			log(UTP_LOG_DEBUG, "not resending %u count:%d dup_ack:%u fast_resend_seq_nr:%u",
+			log(UTP_LOG_DEBUG, "not resending %u count:%d dup_ack:%" PRIu8 " fast_resend_seq_nr:%" PRIu16,
 				v, count, duplicate_ack, fast_resend_seq_nr);
 			#endif
 		}
@@ -1571,7 +1571,7 @@ void UTPSocket::selective_ack(unsigned int base, const uint8_t *mask, uint8_t le
 
 	} else {
 		#if UTP_DEBUG_LOGGING
-		log(UTP_LOG_DEBUG, "not resending %u count:%d dup_ack:%u fast_resend_seq_nr:%u",
+		log(UTP_LOG_DEBUG, "not resending %u count:%d dup_ack:%" PRIu8 " fast_resend_seq_nr:%" PRIu16,
 			base - 1, count, duplicate_ack, fast_resend_seq_nr);
 		#endif
 	}
@@ -1711,12 +1711,12 @@ void UTPSocket::apply_ccontrol(size_t bytes_acked, uint32_t actual_delay, int64_
 	max_window = clamp<size_t>(max_window, MIN_WINDOW_SIZE, opt_sndbuf);
 
 	// used in parse_log.py
-	log(UTP_LOG_NORMAL, "actual_delay:%u our_delay:%d their_delay:%u off_target:%d max_window:%u "
-			"delay_base:%u delay_sum:%d target_delay:%d acked_bytes:%u cur_window:%u "
+	log(UTP_LOG_NORMAL, "actual_delay:%" PRIu32 " our_delay:%d their_delay:%u off_target:%d max_window:%u "
+			"delay_base:%" PRIu32 " delay_sum:%d target_delay:%d acked_bytes:%u cur_window:%u "
 			"scaled_gain:%f rtt:%u rate:%u wnduser:%u rto:%u timeout:%d get_microseconds:" PRIu64 " "
-			"cur_window_packets:%u packet_size:%u their_delay_base:%u their_actual_delay:%u "
-			"average_delay:%d clock_drift:%d clock_drift_raw:%d delay_penalty:%d current_delay_sum:" PRIu64
-			"current_delay_samples:%d average_delay_base:%d last_maxed_out_window:" PRIu64 " opt_sndbuf:%d "
+			"cur_window_packets:%" PRIu16 " packet_size:%u their_delay_base:%" PRIu32 " their_actual_delay:%" PRIu32 " "
+			"average_delay:%" PRId32 " clock_drift:%" PRId32 " clock_drift_raw:%" PRId32 " delay_penalty:%d current_delay_sum:" PRId64
+			"current_delay_samples:%d average_delay_base:%" PRIu32 " last_maxed_out_window:" PRIu64 " opt_sndbuf:%d "
 			"current_ms:" PRIu64 "",
 			actual_delay, our_delay / 1000, their_hist.get_value() / 1000,
 			int(off_target / 1000), (unsigned int)(max_window), uint32_t(our_hist.delay_base),
@@ -1781,7 +1781,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 	if (pk_flags >= ST_NUM_STATES) return 0;
 
 	#if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "Got %s. seq_nr:%u ack_nr:%u state:%s timestamp:" PRIu64 " reply_micro:%u"
+	conn->log(UTP_LOG_DEBUG, "Got %s. seq_nr:%" PRIu16 " ack_nr:%" PRIu16 " state:%s timestamp:" PRIu64 " reply_micro:%" PRIu32
 		, flagnames[pk_flags], pk_seq_nr, pk_ack_nr, statenames[conn->state]
 		, uint64_t(pf1->tv_usec), (uint32_t)(pf1->reply_micro));
 	#endif
@@ -1802,7 +1802,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 		(wrapping_compare_less(conn->seq_nr - 1, pk_ack_nr, ACK_NR_MASK)
 		|| wrapping_compare_less(pk_ack_nr, conn->seq_nr - 1 - curr_window, ACK_NR_MASK))) {
 #if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "Invalid ack_nr: %u. our seq_nr: %u last unacked: %u"
+	conn->log(UTP_LOG_DEBUG, "Invalid ack_nr: %" PRIu16 ". our seq_nr: %" PRIu16 " last unacked: %u"
 	, pk_ack_nr, conn->seq_nr, (conn->seq_nr - conn->cur_window_packets) & ACK_NR_MASK);
 #endif
 		return 0;
@@ -1894,7 +1894,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 		}
 
 		#if UTP_DEBUG_LOGGING
-		conn->log(UTP_LOG_DEBUG, "    Got old Packet/Ack (%u/%u)=%u"
+		conn->log(UTP_LOG_DEBUG, "    Got old Packet/Ack (%" PRIu16 "/%" PRIu16 ")=%u"
 			, pk_seq_nr, conn->ack_nr, seqnr);
 		#endif
 		return 0;
@@ -1931,7 +1931,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 				if (pk_ack_nr == ((conn->mtu_probe_seq - 1) & ACK_NR_MASK)) {
 					conn->mtu_ceiling = conn->mtu_probe_size - 1;
 					conn->mtu_search_update();
-					conn->log(UTP_LOG_MTU, "MTU [DUPACK] floor:%d ceiling:%d current:%d"
+					conn->log(UTP_LOG_MTU, "MTU [DUPACK] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 						, conn->mtu_floor, conn->mtu_ceiling, conn->mtu_last);
 				} else {
 					// A non-probe was blocked before our probe.
@@ -1970,7 +1970,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 		if (conn->mtu_probe_seq && seq == conn->mtu_probe_seq) {
 			conn->mtu_floor = conn->mtu_probe_size;
 			conn->mtu_search_update();
-			conn->log(UTP_LOG_MTU, "MTU [ACK] floor:%d ceiling:%d current:%d"
+			conn->log(UTP_LOG_MTU, "MTU [ACK] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32
 				, conn->mtu_floor, conn->mtu_ceiling, conn->mtu_last);
 		}
 
@@ -1988,7 +1988,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 	}
 
 	#if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "acks:%d acked_bytes:%u seq_nr:%d cur_window:%u cur_window_packets:%u relative_seqnr:%u max_window:%u min_rtt:%u rtt:%u",
+	conn->log(UTP_LOG_DEBUG, "acks:%d acked_bytes:%u seq_nr:%" PRIu16 " cur_window:%u cur_window_packets:%" PRIu16  " relative_seqnr:%u max_window:%u min_rtt:%u rtt:%u",
 		acks, (unsigned int)acked_bytes, conn->seq_nr, (unsigned int)conn->cur_window, conn->cur_window_packets,
 		seqnr, (unsigned int)conn->max_window, (unsigned int)(min_rtt / 1000), conn->rtt);
 	#endif
@@ -2189,7 +2189,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 			conn->fast_resend_seq_nr = (pk_ack_nr + 1) & ACK_NR_MASK;
 
 		#if UTP_DEBUG_LOGGING
-		conn->log(UTP_LOG_DEBUG, "fast_resend_seq_nr:%u", conn->fast_resend_seq_nr);
+		conn->log(UTP_LOG_DEBUG, "fast_resend_seq_nr:%" PRIu16, conn->fast_resend_seq_nr);
 		#endif
 
 		for (int i = 0; i < acks; ++i) {
@@ -2211,7 +2211,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 			conn->cur_window_packets--;
 
 			#if UTP_DEBUG_LOGGING
-			conn->log(UTP_LOG_DEBUG, "decementing cur_window_packets:%u", conn->cur_window_packets);
+			conn->log(UTP_LOG_DEBUG, "decementing cur_window_packets:%" PRIu16, conn->cur_window_packets);
 			#endif
 
 		}
@@ -2231,7 +2231,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 			conn->cur_window_packets--;
 
 			#if UTP_DEBUG_LOGGING
-			conn->log(UTP_LOG_DEBUG, "decementing cur_window_packets:%u", conn->cur_window_packets);
+			conn->log(UTP_LOG_DEBUG, "decementing cur_window_packets:%" PRIu16, conn->cur_window_packets);
 			#endif
 
 		}
@@ -2257,7 +2257,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 		if (conn->fast_timeout) {
 
 			#if UTP_DEBUG_LOGGING
-			conn->log(UTP_LOG_DEBUG, "Fast timeout %u,%u,%u?", (unsigned int)conn->cur_window, conn->seq_nr - conn->timeout_seq_nr, conn->timeout_seq_nr);
+			conn->log(UTP_LOG_DEBUG, "Fast timeout %u,%" PRIu16 ",%" PRIu16 "?", (unsigned int)conn->cur_window, conn->seq_nr - conn->timeout_seq_nr, conn->timeout_seq_nr);
 			#endif
 
 			// if the fast_resend_seq_nr is not pointing to the oldest outstanding packet, it suggests that we've already
@@ -2271,7 +2271,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 				if (pkt && pkt->transmissions > 0) {
 
 					#if UTP_DEBUG_LOGGING
-					conn->log(UTP_LOG_DEBUG, "Packet %u fast timeout-retry.", conn->seq_nr - conn->cur_window_packets);
+					conn->log(UTP_LOG_DEBUG, "Packet %" PRIu16 " fast timeout-retry.", conn->seq_nr - conn->cur_window_packets);
 					#endif
 
 					#ifdef _DEBUG
@@ -2294,7 +2294,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 	assert(conn->cur_window_packets == 0 || conn->outbuf.get(conn->seq_nr - conn->cur_window_packets));
 
 	#if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "acks:%d acked_bytes:%u seq_nr:%u cur_window:%u cur_window_packets:%u ",
+	conn->log(UTP_LOG_DEBUG, "acks:%d acked_bytes:%u seq_nr:%" PRIu16 " cur_window:%u cur_window_packets:%" PRIu16 " ",
 		acks, (unsigned int)acked_bytes, conn->seq_nr, (unsigned int)conn->cur_window, conn->cur_window_packets);
 	#endif
 
@@ -2324,7 +2324,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 	if (pk_flags == ST_FIN && !conn->got_fin) {
 
 		#if UTP_DEBUG_LOGGING
-		conn->log(UTP_LOG_DEBUG, "Got FIN eof_pkt:%u", pk_seq_nr);
+		conn->log(UTP_LOG_DEBUG, "Got FIN eof_pkt:%" PRIu16, pk_seq_nr);
 		#endif
 
 		conn->got_fin = true;
@@ -2414,7 +2414,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 
 			#if UTP_DEBUG_LOGGING
 			conn->log(UTP_LOG_DEBUG, "Got an invalid packet sequence number, past EOF "
-				"reorder_count:%u len:%u (rb:%u)",
+				"reorder_count:%" PRIu16 " len:%u (rb:%u)",
 				conn->reorder_count, (unsigned int)(packet_end - data), (unsigned int)utp_call_get_read_buffer_size(conn->ctx, conn));
 			#endif
 			return 0;
@@ -2427,7 +2427,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 
 			#if UTP_DEBUG_LOGGING
 			conn->log(UTP_LOG_DEBUG, "0x%08x: Got an invalid packet sequence number, too far off "
-				"reorder_count:%u len:%u (rb:%u)",
+				"reorder_count:%" PRIu16 " len:%u (rb:%u)",
 				conn->reorder_count, (unsigned int)(packet_end - data), (unsigned int)utp_call_get_read_buffer_size(conn->ctx, conn));
 			#endif
 			return 0;
@@ -2467,7 +2467,7 @@ size_t utp_process_incoming(UTPSocket *conn, const uint8_t *packet, size_t len, 
 		conn->reorder_count++;
 
 		#if UTP_DEBUG_LOGGING
-		conn->log(UTP_LOG_DEBUG, "0x%08x: Got out of order data reorder_count:%u len:%u (rb:%u)",
+		conn->log(UTP_LOG_DEBUG, "0x%08x: Got out of order data reorder_count:%" PRIu16 " len:%u (rb:%u)",
 			conn->reorder_count, (unsigned int)(packet_end - data), (unsigned int)utp_call_get_read_buffer_size(conn->ctx, conn));
 		#endif
 
@@ -2753,7 +2753,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 	// Create and send a connect message
 
 	// used in parse_log.py
-	conn->log(UTP_LOG_NORMAL, "UTP_Connect conn_seed:%u packet_size:%u (B) "
+	conn->log(UTP_LOG_NORMAL, "UTP_Connect conn_seed:%" PRIu32 " packet_size:%u (B) "
 			"target_delay:%u (ms) delay_history:%u "
 			"delay_base_history:%u (minutes)",
 			conn->conn_seed, PACKET_SIZE, conn->target_delay / 1000,
@@ -2801,7 +2801,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 	conn->cur_window_packets++;
 
 	#if UTP_DEBUG_LOGGING
-	conn->log(UTP_LOG_DEBUG, "incrementing cur_window_packets:%u", conn->cur_window_packets);
+	conn->log(UTP_LOG_DEBUG, "incrementing cur_window_packets:%" PRIu16, conn->cur_window_packets);
 	#endif
 
 	conn->send_packet(pkt);
@@ -2835,15 +2835,15 @@ int utp_process_udp(utp_context *ctx, const uint8_t *buffer, size_t len, const s
 
 	if (version != 1) {
 		#if UTP_DEBUG_LOGGING
-		ctx->log(UTP_LOG_DEBUG, NULL, "recv %s len:%u version:%u unsupported version", addrfmt(addr, addrbuf), (unsigned int)len, version);
+		ctx->log(UTP_LOG_DEBUG, NULL, "recv %s len:%u version:%" PRIu8 " unsupported version", addrfmt(addr, addrbuf), (unsigned int)len, version);
 		#endif
 
 		return 0;
 	}
 
 	#if UTP_DEBUG_LOGGING
-	ctx->log(UTP_LOG_DEBUG, NULL, "recv %s len:%u id:%u", addrfmt(addr, addrbuf), (unsigned int)len, id);
-	ctx->log(UTP_LOG_DEBUG, NULL, "recv id:%u seq_nr:%u ack_nr:%u", id, (unsigned int)pf1->seq_nr, (unsigned int)pf1->ack_nr);
+	ctx->log(UTP_LOG_DEBUG, NULL, "recv %s len:%u id:%" PRIu32, addrfmt(addr, addrbuf), (unsigned int)len, id);
+	ctx->log(UTP_LOG_DEBUG, NULL, "recv id:%" PRIu32 " seq_nr:%u ack_nr:%u", id, (unsigned int)pf1->seq_nr, (unsigned int)pf1->ack_nr);
 	#endif
 
 	const uint8_t flags = pf1->type();
@@ -3062,7 +3062,7 @@ static UTPSocket* parse_icmp_payload(utp_context *ctx, const uint8_t *buffer, si
 	}
 
 	#if UTP_DEBUG_LOGGING
-	ctx->log(UTP_LOG_DEBUG, NULL, "Ignoring ICMP from %s: No matching connection found for id %u", addrfmt(addr, addrbuf), id);
+	ctx->log(UTP_LOG_DEBUG, NULL, "Ignoring ICMP from %s: No matching connection found for id %" PRIu32, addrfmt(addr, addrbuf), id);
 	#endif
 	return NULL;
 }
@@ -3102,7 +3102,7 @@ int utp_process_icmp_fragmentation(utp_context *ctx, const uint8_t* buffer, size
 		conn->mtu_search_update();
 	}
 
-	conn->log(UTP_LOG_MTU, "MTU [ICMP] floor:%d ceiling:%d current:%d", conn->mtu_floor, conn->mtu_ceiling, conn->mtu_last);
+	conn->log(UTP_LOG_MTU, "MTU [ICMP] floor:%" PRIu32 " ceiling:%" PRIu32 " current:%" PRIu32, conn->mtu_floor, conn->mtu_ceiling, conn->mtu_last);
 	return 1;
 }
 
@@ -3206,7 +3206,7 @@ ssize_t utp_writev(utp_socket *conn, struct utp_iovec *iovec_input, size_t num_i
 		sent  += num_to_send;
 
 		#if UTP_DEBUG_LOGGING
-		conn->log(UTP_LOG_DEBUG, "Sending packet. seq_nr:%u ack_nr:%u wnd:%u/%u/%u rcv_win:%u size:%u cur_window_packets:%u",
+		conn->log(UTP_LOG_DEBUG, "Sending packet. seq_nr:%" PRIu16 " ack_nr:%" PRIu16 " wnd:%u/%u/%u rcv_win:%u size:%u cur_window_packets:%" PRIu16,
 			conn->seq_nr, conn->ack_nr,
 			(unsigned int)(conn->cur_window + num_to_send),
 			(unsigned int)conn->max_window, (unsigned int)conn->max_window_user,

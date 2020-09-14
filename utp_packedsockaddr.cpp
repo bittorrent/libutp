@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 
+#include <inttypes.h>
 #include <string.h>
 #include <assert.h>
 #include <stdio.h>
@@ -134,6 +135,6 @@ const char *PackedSockAddr::fmt(char *s, size_t len) const
 		while (*++i) {}
 		*i++ = ']';
 	}
-	snprintf(i, len - (i-s), ":%u", _port);
+	snprintf(i, len - (i-s), ":%" PRIu16, _port);
 	return s;
 }
