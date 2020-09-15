@@ -100,9 +100,9 @@ typedef struct {
 	utp_context *context;
 	utp_socket *socket;
 	size_t len;
-	uint32 flags;
+	uint32_t flags;
 	int callback_type;
-	const byte *buf;
+	const uint8_t *buf;
 
 	union {
 		const struct sockaddr *address;
@@ -118,24 +118,24 @@ typedef struct {
 	};
 } utp_callback_arguments;
 
-typedef uint64 utp_callback_t(utp_callback_arguments *);
+typedef uint64_t utp_callback_t(utp_callback_arguments *);
 
 // Returned by utp_get_context_stats()
 typedef struct {
-	uint32 _nraw_recv[5];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (context-wide)
-	uint32 _nraw_send[5];	// total packets sent     less than 300/600/1200/MTU bytes for all connections (context-wide)
+	uint32_t _nraw_recv[5];	// total packets recieved less than 300/600/1200/MTU bytes fpr all connections (context-wide)
+	uint32_t _nraw_send[5];	// total packets sent     less than 300/600/1200/MTU bytes for all connections (context-wide)
 } utp_context_stats;
 
 // Returned by utp_get_stats()
 typedef struct {
-	uint64 nbytes_recv;	// total bytes received
-	uint64 nbytes_xmit;	// total bytes transmitted
-	uint32 rexmit;		// retransmit counter
-	uint32 fastrexmit;	// fast retransmit counter
-	uint32 nxmit;		// transmit counter
-	uint32 nrecv;		// receive counter (total)
-	uint32 nduprecv;	// duplicate receive counter
-	uint32 mtu_guess;	// Best guess at MTU
+	uint64_t nbytes_recv;	// total bytes received
+	uint64_t nbytes_xmit;	// total bytes transmitted
+	uint32_t rexmit;		// retransmit counter
+	uint32_t fastrexmit;	// fast retransmit counter
+	uint32_t nxmit;		// transmit counter
+	uint32_t nrecv;		// receive counter (total)
+	uint32_t nduprecv;	// duplicate receive counter
+	uint32_t mtu_guess;	// Best guess at MTU
 } utp_socket_stats;
 
 #define UTP_IOV_MAX 1024
@@ -154,9 +154,9 @@ void*			utp_context_set_userdata		(utp_context *ctx, void *userdata);
 void*			utp_context_get_userdata		(utp_context *ctx);
 int				utp_context_set_option			(utp_context *ctx, int opt, int val);
 int				utp_context_get_option			(utp_context *ctx, int opt);
-int				utp_process_udp					(utp_context *ctx, const byte *buf, size_t len, const struct sockaddr *to, socklen_t tolen);
-int				utp_process_icmp_error			(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
-int				utp_process_icmp_fragmentation	(utp_context *ctx, const byte *buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16 next_hop_mtu);
+int				utp_process_udp					(utp_context *ctx, const uint8_t *buf, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_error			(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen);
+int				utp_process_icmp_fragmentation	(utp_context *ctx, const uint8_t *buffer, size_t len, const struct sockaddr *to, socklen_t tolen, uint16_t next_hop_mtu);
 void			utp_check_timeouts				(utp_context *ctx);
 void			utp_issue_deferred_acks			(utp_context *ctx);
 utp_context_stats* utp_get_context_stats		(utp_context *ctx);
@@ -170,7 +170,7 @@ ssize_t			utp_write						(utp_socket *s, void *buf, size_t count);
 ssize_t			utp_writev						(utp_socket *s, struct utp_iovec *iovec, size_t num_iovecs);
 int				utp_getpeername					(utp_socket *s, struct sockaddr *addr, socklen_t *addrlen);
 void			utp_read_drained				(utp_socket *s);
-int				utp_get_delays					(utp_socket *s, uint32 *ours, uint32 *theirs, uint32 *age);
+int				utp_get_delays					(utp_socket *s, uint32_t *ours, uint32_t *theirs, uint32_t *age);
 utp_socket_stats* utp_get_stats					(utp_socket *s);
 utp_context*	utp_get_context					(utp_socket *s);
 void			utp_shutdown					(utp_socket *s, int how);

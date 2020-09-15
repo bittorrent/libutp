@@ -28,14 +28,14 @@
 struct PACKED_ATTRIBUTE PackedSockAddr {
 	// The values are always stored here in network byte order
 	union {
-		byte _in6[16];		// IPv6
-		uint16 _in6w[8];	// IPv6, word based (for convenience)
-		uint32 _in6d[4];	// Dword access
+		uint8_t _in6[16];		// IPv6
+		uint16_t _in6w[8];	// IPv6, word based (for convenience)
+		uint32_t _in6d[4];	// Dword access
 		in6_addr _in6addr;	// For convenience
 	} _in;
 
 	// Host byte order
-	uint16 _port;
+	uint16_t _port;
 
 	#define _sin4 _in._in6d[3]	// IPv4 is stored where it goes if mapped
 
@@ -43,7 +43,7 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	#define _sin6w _in._in6w
 	#define _sin6d _in._in6d
 
-	byte get_family() const;
+	uint8_t get_family() const;
 	bool operator==(const PackedSockAddr& rhs) const;
 	bool operator!=(const PackedSockAddr& rhs) const;
 	void set(const SOCKADDR_STORAGE* sa, socklen_t len);
@@ -52,9 +52,9 @@ struct PACKED_ATTRIBUTE PackedSockAddr {
 	PackedSockAddr(void);
 
 	SOCKADDR_STORAGE get_sockaddr_storage(socklen_t *len) const;
-	cstr fmt(str s, size_t len) const;
+	const char *fmt(char *s, size_t len) const;
 
-	uint32 compute_hash() const;
+	uint32_t compute_hash() const;
 } ALIGNED_ATTRIBUTE(4);
 
 #endif //__UTP_PACKEDSOCKADDR_H__

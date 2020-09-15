@@ -31,17 +31,17 @@ int utp_call_on_firewall(utp_context *ctx, const struct sockaddr *address, sockl
 void utp_call_on_accept(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
 void utp_call_on_connect(utp_context *ctx, utp_socket *s);
 void utp_call_on_error(utp_context *ctx, utp_socket *s, int error_code);
-void utp_call_on_read(utp_context *ctx, utp_socket *s, const byte *buf, size_t len);
+void utp_call_on_read(utp_context *ctx, utp_socket *s, const uint8_t *buf, size_t len);
 void utp_call_on_overhead_statistics(utp_context *ctx, utp_socket *s, int send, size_t len, int type);
 void utp_call_on_delay_sample(utp_context *ctx, utp_socket *s, int sample_ms);
 void utp_call_on_state_change(utp_context *ctx, utp_socket *s, int state);
-uint16 utp_call_get_udp_mtu(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
-uint16 utp_call_get_udp_overhead(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
-uint64 utp_call_get_milliseconds(utp_context *ctx, utp_socket *s);
-uint64 utp_call_get_microseconds(utp_context *ctx, utp_socket *s);
-uint32 utp_call_get_random(utp_context *ctx, utp_socket *s);
+uint16_t utp_call_get_udp_mtu(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
+uint16_t utp_call_get_udp_overhead(utp_context *ctx, utp_socket *s, const struct sockaddr *address, socklen_t address_len);
+uint64_t utp_call_get_milliseconds(utp_context *ctx, utp_socket *s);
+uint64_t utp_call_get_microseconds(utp_context *ctx, utp_socket *s);
+uint32_t utp_call_get_random(utp_context *ctx, utp_socket *s);
 size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *s);
-void utp_call_log(utp_context *ctx, utp_socket *s, const byte *buf);
-void utp_call_sendto(utp_context *ctx, utp_socket *s, const byte *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32 flags);
+void utp_call_log(utp_context *ctx, utp_socket *s, const uint8_t *buf);
+void utp_call_sendto(utp_context *ctx, utp_socket *s, const uint8_t *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32_t flags);
 
 #endif // __UTP_CALLBACKS_H__

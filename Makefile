@@ -1,12 +1,16 @@
 OBJS     = utp_internal.o utp_utils.o utp_hash.o utp_callbacks.o utp_api.o utp_packedsockaddr.o
-CFLAGS   = -Wall -DPOSIX -g -fno-exceptions $(OPT)
+CMNFLAGS = -Wall -DPOSIX -D_POSIX_C_SOURCE=200112L -g -fno-exceptions $(OPT)
+CFLAGS   = $(CMNFLAGS)
 OPT ?= -O3
-CXXFLAGS = $(CFLAGS) -fPIC -fno-rtti
+CXXFLAGS = $(CMNFLAGS) -fPIC -fno-rtti
 CC       = gcc
 CXX      = g++
 
 CXXFLAGS += -Wno-sign-compare
 CXXFLAGS += -fpermissive
+
+CFLAGS   += -std=c99
+CXXFLAGS += -std=c++98
 
 # Uncomment to enable utp_get_stats(), and a few extra sanity checks
 #CFLAGS += -D_DEBUG

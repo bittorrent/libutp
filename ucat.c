@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -163,7 +164,7 @@ out:
 	}
 }
 
-uint64 callback_on_read(utp_callback_arguments *a)
+uint64_t callback_on_read(utp_callback_arguments *a)
 {
 	const unsigned char *p;
 	ssize_t len, left;
@@ -181,7 +182,7 @@ uint64 callback_on_read(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_firewall(utp_callback_arguments *a)
+uint64_t callback_on_firewall(utp_callback_arguments *a)
 {
 	if (! o_listen) {
 		debug("Firewalling unexpected inbound connection in non-listen mode\n");
@@ -197,7 +198,7 @@ uint64 callback_on_firewall(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_accept(utp_callback_arguments *a)
+uint64_t callback_on_accept(utp_callback_arguments *a)
 {
 	assert(!s);
 	s = a->socket;
@@ -206,7 +207,7 @@ uint64 callback_on_accept(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_error(utp_callback_arguments *a)
+uint64_t callback_on_error(utp_callback_arguments *a)
 {
 	fprintf(stderr, "Error: %s\n", utp_error_code_names[a->error_code]);
 	utp_close(s);
@@ -216,7 +217,7 @@ uint64 callback_on_error(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_on_state_change(utp_callback_arguments *a)
+uint64_t callback_on_state_change(utp_callback_arguments *a)
 {
 	debug("state %d: %s\n", a->state, utp_state_names[a->state]);
 	utp_socket_stats *stats;
@@ -241,14 +242,14 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 			stats = utp_get_stats(a->socket);
 			if (stats) {
 				debug("Socket Statistics:\n");
-				debug("    Bytes sent:          %d\n", stats->nbytes_xmit);
-				debug("    Bytes received:      %d\n", stats->nbytes_recv);
-				debug("    Packets received:    %d\n", stats->nrecv);
-				debug("    Packets sent:        %d\n", stats->nxmit);
-				debug("    Duplicate receives:  %d\n", stats->nduprecv);
-				debug("    Retransmits:         %d\n", stats->rexmit);
-				debug("    Fast Retransmits:    %d\n", stats->fastrexmit);
-				debug("    Best guess at MTU:   %d\n", stats->mtu_guess);
+				debug("    Bytes sent:          %" PRIu64 "\n", stats->nbytes_xmit);
+				debug("    Bytes received:      %" PRIu64 "\n", stats->nbytes_recv);
+				debug("    Packets received:    %" PRIu32 "\n", stats->nrecv);
+				debug("    Packets sent:        %" PRIu32 "\n", stats->nxmit);
+				debug("    Duplicate receives:  %" PRIu32 "\n", stats->nduprecv);
+				debug("    Retransmits:         %" PRIu32 "\n", stats->rexmit);
+				debug("    Fast Retransmits:    %" PRIu32 "\n", stats->fastrexmit);
+				debug("    Best guess at MTU:   %" PRIu32 "\n", stats->mtu_guess);
 			}
 			else {
 				debug("No socket statistics available\n");
@@ -262,7 +263,7 @@ uint64 callback_on_state_change(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_sendto(utp_callback_arguments *a)
+uint64_t callback_sendto(utp_callback_arguments *a)
 {
 	struct sockaddr_in *sin = (struct sockaddr_in *) a->address;
 
@@ -276,7 +277,7 @@ uint64 callback_sendto(utp_callback_arguments *a)
 	return 0;
 }
 
-uint64 callback_log(utp_callback_arguments *a)
+uint64_t callback_log(utp_callback_arguments *a)
 {
 	fprintf(stderr, "log: %s\n", a->buf);
 	return 0;
@@ -621,9 +622,9 @@ int main(int argc, char *argv[])
 
 	if (stats) {
 		debug("           Bucket size:    <23    <373    <723    <1400    >1400\n");
-		debug("Number of packets sent:  %5d   %5d   %5d    %5d    %5d\n",
+		debug("Number of packets sent:  %5" PRIu32 "   %5" PRIu32 "   %5" PRIu32 "    %5" PRIu32 "    %5" PRIu32 "\n",
 			stats->_nraw_send[0], stats->_nraw_send[1], stats->_nraw_send[2], stats->_nraw_send[3], stats->_nraw_send[4]);
-		debug("Number of packets recv:  %5d   %5d   %5d    %5d    %5d\n",
+		debug("Number of packets recv:  %5" PRIu32 "   %5" PRIu32 "   %5" PRIu32 "    %5" PRIu32 "    %5" PRIu32 "\n",
 			stats->_nraw_recv[0], stats->_nraw_recv[1], stats->_nraw_recv[2], stats->_nraw_recv[3], stats->_nraw_recv[4]);
 	}
 	else {

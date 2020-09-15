@@ -60,9 +60,9 @@ enum bandwidth_type_t {
 
 struct PACKED_ATTRIBUTE RST_Info {
 	PackedSockAddr addr;
-	uint32 connid;
-	uint16 ack_nr;
-	uint64 timestamp;
+	uint32_t connid;
+	uint16_t ack_nr;
+	uint64_t timestamp;
 };
 
 // It's really important that we don't have duplicate keys in the hash table.
@@ -73,9 +73,9 @@ void UTP_FreeAll(struct UTPSocketHT *utp_sockets);
 
 struct UTPSocketKey {
 	PackedSockAddr addr;
-	uint32 recv_id;		 // "conn_seed", "conn_id"
+	uint32_t recv_id;		 // "conn_seed", "conn_id"
 
-	UTPSocketKey(const PackedSockAddr& _addr, uint32 _recv_id) {
+	UTPSocketKey(const PackedSockAddr& _addr, uint32_t _recv_id) {
 		memset(this, 0, sizeof(*this));
 		addr = _addr;
 		recv_id = _recv_id;
@@ -85,7 +85,7 @@ struct UTPSocketKey {
 		return recv_id == other.recv_id && addr == other.addr;
 	}
 
-	uint32 compute_hash() const {
+	uint32_t compute_hash() const {
 		return recv_id ^ addr.compute_hash();
 	}
 };
@@ -115,7 +115,7 @@ struct struct_utp_context {
 	void *userdata;
 	utp_callback_t* callbacks[UTP_ARRAY_SIZE];
 
-	uint64 current_ms;
+	uint64_t current_ms;
 	utp_context_stats context_stats;
 	UTPSocket *last_utp_socket;
 	Array<UTPSocket*> ack_sockets;
@@ -124,7 +124,7 @@ struct struct_utp_context {
 	size_t target_delay;
 	size_t opt_sndbuf;
 	size_t opt_rcvbuf;
-	uint64 last_check;
+	uint64_t last_check;
 
 	struct_utp_context();
 	~struct_utp_context();

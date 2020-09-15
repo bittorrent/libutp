@@ -69,7 +69,7 @@ void utp_call_on_error(utp_context *ctx, utp_socket *socket, int error_code)
 	ctx->callbacks[UTP_ON_ERROR](&args);
 }
 
-void utp_call_on_read(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len)
+void utp_call_on_read(utp_context *ctx, utp_socket *socket, const uint8_t *buf, size_t len)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_ON_READ]) return;
@@ -116,7 +116,7 @@ void utp_call_on_state_change(utp_context *ctx, utp_socket *socket, int state)
 	ctx->callbacks[UTP_ON_STATE_CHANGE](&args);
 }
 
-uint16 utp_call_get_udp_mtu(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
+uint16_t utp_call_get_udp_mtu(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_GET_UDP_MTU]) return 0;
@@ -125,10 +125,10 @@ uint16 utp_call_get_udp_mtu(utp_context *ctx, utp_socket *socket, const struct s
 	args.socket = socket;
 	args.address = address;
 	args.address_len = address_len;
-	return (uint16)ctx->callbacks[UTP_GET_UDP_MTU](&args);
+	return (uint16_t)ctx->callbacks[UTP_GET_UDP_MTU](&args);
 }
 
-uint16 utp_call_get_udp_overhead(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
+uint16_t utp_call_get_udp_overhead(utp_context *ctx, utp_socket *socket, const struct sockaddr *address, socklen_t address_len)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_GET_UDP_OVERHEAD]) return 0;
@@ -137,10 +137,10 @@ uint16 utp_call_get_udp_overhead(utp_context *ctx, utp_socket *socket, const str
 	args.socket = socket;
 	args.address = address;
 	args.address_len = address_len;
-	return (uint16)ctx->callbacks[UTP_GET_UDP_OVERHEAD](&args);
+	return (uint16_t)ctx->callbacks[UTP_GET_UDP_OVERHEAD](&args);
 }
 
-uint64 utp_call_get_milliseconds(utp_context *ctx, utp_socket *socket)
+uint64_t utp_call_get_milliseconds(utp_context *ctx, utp_socket *socket)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_GET_MILLISECONDS]) return 0;
@@ -150,7 +150,7 @@ uint64 utp_call_get_milliseconds(utp_context *ctx, utp_socket *socket)
 	return ctx->callbacks[UTP_GET_MILLISECONDS](&args);
 }
 
-uint64 utp_call_get_microseconds(utp_context *ctx, utp_socket *socket)
+uint64_t utp_call_get_microseconds(utp_context *ctx, utp_socket *socket)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_GET_MICROSECONDS]) return 0;
@@ -160,14 +160,14 @@ uint64 utp_call_get_microseconds(utp_context *ctx, utp_socket *socket)
 	return ctx->callbacks[UTP_GET_MICROSECONDS](&args);
 }
 
-uint32 utp_call_get_random(utp_context *ctx, utp_socket *socket)
+uint32_t utp_call_get_random(utp_context *ctx, utp_socket *socket)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_GET_RANDOM]) return 0;
 	args.callback_type = UTP_GET_RANDOM;
 	args.context = ctx;
 	args.socket = socket;
-	return (uint32)ctx->callbacks[UTP_GET_RANDOM](&args);
+	return (uint32_t)ctx->callbacks[UTP_GET_RANDOM](&args);
 }
 
 size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *socket)
@@ -180,7 +180,7 @@ size_t utp_call_get_read_buffer_size(utp_context *ctx, utp_socket *socket)
 	return (size_t)ctx->callbacks[UTP_GET_READ_BUFFER_SIZE](&args);
 }
 
-void utp_call_log(utp_context *ctx, utp_socket *socket, const byte *buf)
+void utp_call_log(utp_context *ctx, utp_socket *socket, const uint8_t *buf)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_LOG]) return;
@@ -191,7 +191,7 @@ void utp_call_log(utp_context *ctx, utp_socket *socket, const byte *buf)
 	ctx->callbacks[UTP_LOG](&args);
 }
 
-void utp_call_sendto(utp_context *ctx, utp_socket *socket, const byte *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32 flags)
+void utp_call_sendto(utp_context *ctx, utp_socket *socket, const uint8_t *buf, size_t len, const struct sockaddr *address, socklen_t address_len, uint32_t flags)
 {
 	utp_callback_arguments args;
 	if (!ctx->callbacks[UTP_SENDTO]) return;

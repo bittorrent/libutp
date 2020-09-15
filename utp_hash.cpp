@@ -26,15 +26,15 @@
 #define LIBUTP_HASH_UNUSED ((utp_link_t)-1)
 
 #ifdef STRICT_ALIGN
-inline uint32 Read32(const void *p)
+inline uint32_t Read32(const void *p)
 {
-	uint32 tmp;
+	uint32_t tmp;
 	memcpy(&tmp, p, sizeof tmp);
 	return tmp;
 }
 
 #else
-inline uint32 Read32(const void *p) { return *(uint32*)p; }
+inline uint32_t Read32(const void *p) { return *(uint32_t*)p; }
 #endif
 
 
@@ -44,7 +44,7 @@ inline uint32 Read32(const void *p) { return *(uint32*)p; }
 #define BASE_SIZE(bc) (sizeof(utp_hash_t) + sizeof(utp_link_t) * ((bc) + 1))
 
 // Get a pointer to the base of the structure array managed by the hash table
-#define get_bep(h) ((byte*)(h)) + BASE_SIZE((h)->N)
+#define get_bep(h) ((uint8_t*)(h)) + BASE_SIZE((h)->N)
 
 // Get the address of the information associated with a specific structure in the array,
 // given the address of the base of the structure.
@@ -53,7 +53,7 @@ inline uint32 Read32(const void *p) { return *(uint32*)p; }
 // the location named in the structure may not be the location actually used by the hash table,
 // since the compiler may have padded the end of the structure with 2 bytes after the utp_link_t member.
 // TODO: this macro should not require that the variable pointing at the hash table be named 'hash'
-#define ptr_to_link(p) (utp_link_t *) (((byte *) (p)) + hash->E - sizeof(utp_link_t))
+#define ptr_to_link(p) (utp_link_t *) (((uint8_t *) (p)) + hash->E - sizeof(utp_link_t))
 
 // Calculate how much to allocate for a hash table with bucket count, total size, and structure count
 // TODO:  make this 64-bit clean
@@ -85,32 +85,32 @@ utp_hash_t *utp_hash_create(int N, int key_size, int total_size, int initial, ut
 	return hash;
 }
 
-uint utp_hash_mem(const void *keyp, size_t keysize)
+unsigned int utp_hash_mem(const void *keyp, size_t keysize)
 {
-	uint hash = 0;
-	uint n = keysize;
+	unsigned int hash = 0;
+	unsigned int n = keysize;
 	while (n >= 4) {
 		hash ^= Read32(keyp);
-		keyp = (byte*)keyp + sizeof(uint32);
+		keyp = (uint8_t*)keyp + sizeof(uint32_t);
 		hash = (hash << 13) | (hash >> 19);
 		n -= 4;
 	}
 	while (n != 0) {
-		hash ^= *(byte*)keyp;
-		keyp = (byte*)keyp + sizeof(byte);
+		hash ^= *(uint8_t*)keyp;
+		keyp = (uint8_t*)keyp + sizeof(uint8_t);
 		hash = (hash << 8) | (hash >> 24);
 		n--;
 	}
 	return hash;
 }
 
-uint utp_hash_mkidx(utp_hash_t *hash, const void *keyp)
+unsigned int utp_hash_mkidx(utp_hash_t *hash, const void *keyp)
 {
 	// Generate a key from the hash
 	return hash->hash_compute(keyp, hash->K) % hash->N;
 }
 
-static inline bool compare(byte *a, byte *b,int n)
+static inline bool compare(uint8_t *a, uint8_t *b,int n)
 {
 	assert(n >= 4);
 	if (Read32(a) != Read32(b)) return false;
@@ -126,12 +126,12 @@ void *utp_hash_lookup(utp_hash_t *hash, const void *key)
 	utp_link_t idx = utp_hash_mkidx(hash, key);
 
 	// base pointer
-	byte *bep = get_bep(hash);
+	uint8_t *bep = get_bep(hash);
 
 	utp_link_t cur = hash->inits[idx];
 	while (cur != LIBUTP_HASH_UNUSED) {
-		byte *key2 = bep + (cur * hash->E);
-		if (COMPARE(hash, (byte*)key, key2, hash->K))
+		uint8_t *key2 = bep + (cur * hash->E);
+		if (COMPARE(hash, (uint8_t*)key, key2, hash->K))
 			return key2;
 		cur = *ptr_to_link(key2);
 	}
@@ -145,7 +145,7 @@ void *utp_hash_lookup(utp_hash_t *hash, const void *key)
 void *utp_hash_add(utp_hash_t **hashp, const void *key)
 {
 	//Allocate a new entry
-	byte *elemp;
+	uint8_t *elemp;
 	utp_link_t elem;
 	utp_hash_t *hash = *hashp;
 	utp_link_t idx = utp_hash_mkidx(hash, key);
@@ -197,13 +197,13 @@ void *utp_hash_del(utp_hash_t *hash, const void *key)
 	utp_link_t idx = utp_hash_mkidx(hash, key);
 
 	// base pointer
-	byte *bep = get_bep(hash);
+	uint8_t *bep = get_bep(hash);
 
 	utp_link_t *curp = &hash->inits[idx];
 	utp_link_t cur;
 	while ((cur=*curp) != LIBUTP_HASH_UNUSED) {
-		byte *key2 = bep + (cur * hash->E);
-		if (COMPARE(hash,(byte*)key,(byte*)key2, hash->K )) {
+		uint8_t *key2 = bep + (cur * hash->E);
+		if (COMPARE(hash,(uint8_t*)key,(uint8_t*)key2, hash->K )) {
 			// found an item that matched. unlink it
 			*curp = *ptr_to_link(key2);
 			// Insert into freelist
@@ -235,7 +235,7 @@ void *utp_hash_iterate(utp_hash_t *hash, utp_hash_iterator_t *iter)
 		iter->bucket = buck;
 	}
 
-	byte *elemp = get_bep(hash) + (elem * hash->E);
+	uint8_t *elemp = get_bep(hash) + (elem * hash->E);
 	iter->elem = *ptr_to_link(elemp);
 	return elemp;
 }

@@ -66,12 +66,12 @@ template <typename T> static inline T clamp(T v, T mi, T ma)
 
 namespace aux
 {
-	FORCEINLINE uint16 host_to_network(uint16 i) { return htons(i); }
-	FORCEINLINE uint32 host_to_network(uint32 i) { return htonl(i); }
-	FORCEINLINE int32 host_to_network(int32 i) { return htonl(i); }
-	FORCEINLINE uint16 network_to_host(uint16 i) { return ntohs(i); }
-	FORCEINLINE uint32 network_to_host(uint32 i) { return ntohl(i); }
-	FORCEINLINE int32 network_to_host(int32 i) { return ntohl(i); }
+	FORCEINLINE uint16_t host_to_network(uint16_t i) { return htons(i); }
+	FORCEINLINE uint32_t host_to_network(uint32_t i) { return htonl(i); }
+	FORCEINLINE int32_t host_to_network(int32_t i) { return htonl(i); }
+	FORCEINLINE uint16_t network_to_host(uint16_t i) { return ntohs(i); }
+	FORCEINLINE uint32_t network_to_host(uint32_t i) { return ntohl(i); }
+	FORCEINLINE int32_t network_to_host(int32_t i) { return ntohl(i); }
 }
 
 template <class T>
@@ -83,9 +83,9 @@ private:
 	T m_integer;
 };
 
-typedef big_endian<int32> int32_big;
-typedef big_endian<uint32> uint32_big;
-typedef big_endian<uint16> uint16_big;
+typedef big_endian<int32_t> int32_big;
+typedef big_endian<uint32_t> uint32_big;
+typedef big_endian<uint16_t> uint16_big;
 
 #if (defined(__SVR4) && defined(__sun))
 	#pragma pack(0)

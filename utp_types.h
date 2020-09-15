@@ -23,6 +23,9 @@
 #ifndef __UTP_TYPES_H__
 #define __UTP_TYPES_H__
 
+#include <stdbool.h>
+#include <stdint.h>
+
 // Allow libutp consumers or prerequisites to override PACKED_ATTRIBUTE
 #ifndef PACKED_ATTRIBUTE
 #if defined BROKEN_GCC_STRUCTURE_PACKING && defined __GNUC__
@@ -68,56 +71,11 @@
 #endif
 
 #ifdef _MSC_VER
-	#include <BaseTsd.h>
-	typedef SSIZE_T ssize_t;
+	typedef intptr_t ssize_t;
 #endif
 
 #ifdef POSIX
 	typedef struct sockaddr_storage SOCKADDR_STORAGE;
-#endif
-
-#ifdef WIN32
-	#define I64u "%I64u"
-#else
-	#define I64u "%Lu"
-#endif
-
-// standard types
-typedef unsigned char byte;
-typedef unsigned char uint8;
-typedef signed char int8;
-typedef unsigned short uint16;
-typedef signed short int16;
-typedef unsigned int uint;
-typedef unsigned int uint32;
-typedef signed int int32;
-
-#ifdef _MSC_VER
-typedef unsigned __int64 uint64;
-typedef signed __int64 int64;
-#else
-typedef unsigned long long uint64;
-typedef long long int64;
-#endif
-
-/* compile-time assert */
-#ifndef CASSERT
-#define CASSERT( exp, name ) typedef int is_not_##name [ (exp ) ? 1 : -1 ];
-#endif
-
-CASSERT(8 == sizeof(uint64), sizeof_uint64_is_8)
-CASSERT(8 == sizeof(int64), sizeof_int64_is_8)
-
-#ifndef INT64_MAX
-#define INT64_MAX 0x7fffffffffffffffLL
-#endif
-
-// always ANSI
-typedef const char * cstr;
-typedef char * str;
-
-#ifndef __cplusplus
-typedef uint8 bool;
 #endif
 
 #endif //__UTP_TYPES_H__
