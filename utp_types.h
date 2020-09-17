@@ -42,7 +42,7 @@
 
 // hash.cpp needs socket definitions, which is why this networking specific
 // code is inclued in utypes.h
-#ifdef WIN32
+#ifdef _WIN32
 	#define _CRT_SECURE_NO_DEPRECATE
 	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
@@ -76,7 +76,7 @@
 	typedef struct sockaddr_storage SOCKADDR_STORAGE;
 #endif
 
-#ifdef WIN32
+#ifdef _WIN32
 	#define I64u "%I64u"
 #else
 	#define I64u "%Lu"
