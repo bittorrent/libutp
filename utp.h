@@ -167,7 +167,7 @@ int				utp_setsockopt					(utp_socket *s, int opt, int val);
 int				utp_getsockopt					(utp_socket *s, int opt);
 int				utp_connect						(utp_socket *s, const struct sockaddr *to, socklen_t tolen);
 ssize_t			utp_write						(utp_socket *s, const void *buf, size_t count);
-ssize_t			utp_writev						(utp_socket *s, struct utp_iovec *iovec, size_t num_iovecs);
+ssize_t			utp_writev						(utp_socket *s, const struct utp_iovec *iovec, size_t num_iovecs);
 int				utp_getpeername					(utp_socket *s, struct sockaddr *addr, socklen_t *addrlen);
 void			utp_read_drained				(utp_socket *s);
 int				utp_get_delays					(utp_socket *s, uint32 *ours, uint32 *theirs, uint32 *age);

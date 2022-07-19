@@ -3151,7 +3151,7 @@ int utp_process_icmp_error(utp_context *ctx, const byte *buffer, size_t len, con
 
 // Write bytes to the UTP socket.  Returns the number of bytes written.
 // 0 indicates the socket is no longer writable, -1 indicates an error
-ssize_t utp_writev(utp_socket *conn, struct utp_iovec *iovec_input, size_t num_iovecs)
+ssize_t utp_writev(utp_socket *conn, const struct utp_iovec *iovec_input, size_t num_iovecs)
 {
 	static utp_iovec iovec[UTP_IOV_MAX];
 
