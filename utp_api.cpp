@@ -131,7 +131,7 @@ utp_context_stats* utp_get_context_stats(utp_context *ctx) {
 	return ctx ? &ctx->context_stats : NULL;
 }
 
-ssize_t utp_write(utp_socket *socket, void *buf, size_t len) {
+ssize_t utp_write(utp_socket *socket, const void *buf, size_t len) {
 	struct utp_iovec iovec = { buf, len };
 	return utp_writev(socket, &iovec, 1);
 }
