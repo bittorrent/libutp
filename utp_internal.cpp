@@ -115,6 +115,7 @@ struct PACKED_ATTRIBUTE PacketFormatV1 {
 	byte ver_type;
 	byte version() const { return ver_type & 0xf; }
 	byte type() const { return ver_type >> 4; }
+	void set_version_and_type(byte v, byte t) { ver_type = (v & 0xf) | (t << 4); }
 	void set_version(byte v) { ver_type = (ver_type & 0xf0) | (v & 0xf); }
 	void set_type(byte t) { ver_type = (ver_type & 0xf) | (t << 4); }
 
@@ -765,8 +766,7 @@ void UTPSocket::send_ack(bool synack)
 
 	size_t len;
 	last_rcv_win = get_rcv_window();
-	pfa.pf.set_version(1);
-	pfa.pf.set_type(ST_STATE);
+	pfa.pf.set_version_and_type(1, ST_STATE);
 	pfa.pf.ext = 0;
 	pfa.pf.connid = conn_id_send;
 	pfa.pf.ack_nr = ack_nr;
@@ -840,8 +840,7 @@ void UTPSocket::send_rst(utp_context *ctx,
 	zeromem(&pf1);
 
 	size_t len;
-	pf1.set_version(1);
-	pf1.set_type(ST_RESET);
+	pf1.set_version_and_type(1, ST_RESET);
 	pf1.ext = 0;
 	pf1.connid = conn_id_send;
 	pf1.ack_nr = ack_nr;
@@ -1065,8 +1064,7 @@ void UTPSocket::write_outgoing_packet(size_t payload, uint flags, struct utp_iov
 		last_rcv_win = get_rcv_window();
 
 		PacketFormatV1* p1 = (PacketFormatV1*)pkt->data;
-		p1->set_version(1);
-		p1->set_type(flags);
+		p1->set_version_and_type(1, flags);
 		p1->ext = 0;
 		p1->connid = conn_id_send;
 		p1->windowsize = (uint32)last_rcv_win;
@@ -2774,8 +2772,7 @@ int utp_connect(utp_socket *conn, const struct sockaddr *to, socklen_t tolen)
 	memset(p1, 0, header_size);
 	// SYN packets are special, and have the receive ID in the connid field,
 	// instead of conn_id_send.
-	p1->set_version(1);
-	p1->set_type(ST_SYN);
+	p1->set_version_and_type(1, ST_SYN);
 	p1->ext = 0;
 	p1->connid = conn->conn_id_recv;
 	p1->windowsize = (uint32)conn->last_rcv_win;
