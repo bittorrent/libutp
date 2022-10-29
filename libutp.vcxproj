@@ -165,11 +165,6 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
       <StructMemberAlignment>Default</StructMemberAlignment>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <CompileAsManaged />
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <CallingConvention>Cdecl</CallingConvention>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -207,33 +202,18 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;ENABLE_I18N;ENABLE_SRP=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x501;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <StructMemberAlignment>Default</StructMemberAlignment>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <CallingConvention>Cdecl</CallingConvention>
-      <OmitFramePointers>false</OmitFramePointers>
-      <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
-      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <CompileAsManaged>false</CompileAsManaged>
-      <DebugInformationFormat>None</DebugInformationFormat>
-      <StringPooling>false</StringPooling>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
-    <Lib>
-      <LinkTimeCodeGeneration />
-    </Lib>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='WinRTRelease|Win32'">
     <ClCompile>
