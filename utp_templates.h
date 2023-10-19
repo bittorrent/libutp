@@ -24,6 +24,7 @@
 #define __TEMPLATES_H__
 
 #include "utp_types.h"
+#include <algorithm>
 #include <assert.h>
 
 #if defined(POSIX)
@@ -42,14 +43,8 @@
 #endif
 
 // Utility templates
-#undef min
-#undef max
 
-template <typename T> static inline T min(T a, T b) { if (a < b) return a; return b; }
-template <typename T> static inline T max(T a, T b) { if (a > b) return a; return b; }
 
-template <typename T> static inline T min(T a, T b, T c) { return min(min(a,b),c); }
-template <typename T> static inline T max(T a, T b, T c) { return max(max(a,b),c); }
 template <typename T> static inline T clamp(T v, T mi, T ma)
 {
 	if (v > ma) v = ma;
@@ -125,7 +120,7 @@ public:
 		else { mem = (T*)realloc(mem, (alloc=a) * sizeof(T)); }
 	}
 
-	void Grow() { Resize(::max<size_t>(minsize, alloc * 2)); }
+	void Grow() { Resize(std::max<size_t>(minsize, alloc * 2)); }
 
 	inline size_t Append(const T &t) {
 		if (count >= alloc) Grow();
